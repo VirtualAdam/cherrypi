@@ -8,7 +8,9 @@ You need to install the required Python libraries. It is recommended to use a vi
 
 ```bash
 sudo apt-get update
-sudo apt-get install python3-pip
+sudo apt-get install python3-pip python3-venv
+python3 -m venv venv
+source venv/bin/activate
 pip3 install -r requirements.txt
 ```
 
@@ -23,10 +25,28 @@ pip3 install rpi-lgpio
 
 ## Hardware Setup
 
-The default GPIO pins used in this implementation match the standard wiring for these modules, but using BCM numbering instead of WiringPi numbering.
+This project uses standard 433MHz RF Transmitter and Receiver modules (like the hiBCTR sets).
 
-- **Transmitter Data Pin**: GPIO 17 (Physical Pin 11) - *Default for codesend.py*
-- **Receiver Data Pin**: GPIO 27 (Physical Pin 13) - *Default for rfsniffer.py*
+### Pinout Guide
+
+**Note:** The modules share 5V power and Ground, but require separate Data pins on the Raspberry Pi.
+
+#### Transmitter Module (Square, 3 Pins)
+| Module Pin | Raspberry Pi Pin | Description |
+|------------|------------------|-------------|
+| **VCC**    | Pin 2 or 4       | 5V Power    |
+| **GND**    | Pin 6            | Ground      |
+| **DATA**   | Pin 11 (GPIO 17) | Data Signal |
+
+#### Receiver Module (Rectangular, 4 Pins)
+| Module Pin | Raspberry Pi Pin | Description |
+|------------|------------------|-------------|
+| **VCC**    | Pin 2 or 4       | 5V Power    |
+| **GND**    | Pin 9            | Ground      |
+| **DATA**   | Pin 13 (GPIO 27) | Data Signal |
+| **DATA**   | N/C              | Not Connected (Internal duplicate) |
+
+*Note: You can use any 5V or GND pin on the Pi, but the Data pins must match the configuration in the scripts (GPIO 17 for TX, GPIO 27 for RX).*
 
 ## Usage
 
