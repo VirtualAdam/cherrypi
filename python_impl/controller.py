@@ -12,11 +12,11 @@ PROTOCOL = 1
 
 # Outlet Codes
 OUTLETS = {
-    1: {"on": 349491, "off": 349500},
-    2: {"on": 349635, "off": 349644},
-    3: {"on": 349955, "off": 349964},
-    4: {"on": 351491, "off": 351500},
-    5: {"on": 357635, "off": 357644},
+    1: {"on": 1332531, "off": 1332540},
+    2: {"on": 1332675, "off": 1332684},
+    3: {"on": 1332995, "off": 1333004},
+    4: {"on": 1334531, "off": 1334540},
+    5: {"on": 1340675, "off": 1340684},
 }
 
 def send_code(code, gpio=GPIO_PIN, pulselength=PULSE_LENGTH, protocol=PROTOCOL):
