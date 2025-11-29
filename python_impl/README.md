@@ -59,6 +59,22 @@ python3 rfsniffer.py
 Options:
 - `-g`, `--gpio`: GPIO pin to use (Default: 27)
 
+### Controlling Outlets (controller.py)
+
+You can use `controller.py` to toggle specific outlets using the pre-configured codes.
+
+```bash
+python3 controller.py <OUTLET_ID> <STATE>
+```
+
+Example:
+```bash
+python3 controller.py 1 on
+python3 controller.py 1 off
+```
+
+You can edit the `OUTLETS` dictionary in `controller.py` to match your specific RF codes.
+
 ## Integration
 
 You can update the `toggle.php` or other scripts in the parent directory to call these Python scripts instead of the compiled C++ binaries.
