@@ -29,3 +29,12 @@ def test_control_outlet_invalid_state():
 def test_control_outlet_invalid_id():
     response = client.post("/api/outlet", json={"outlet_id": 99, "state": "on"})
     assert response.status_code == 400
+
+@patch('backend.main.r')
+def test_control_outlet_redis_error(mock_redis):
+    # Simulate Redis connection error during publish
+    mock_redis.publish.side_effect = Exception("Connection lost")
+    
+    response = client.post("/api/outlet", json={"outlet_id": 1, "state": "on"})
+    assert response.status_code == 500
+    assert "Redis Error" in response.json()["detail"]

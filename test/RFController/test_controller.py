@@ -2,9 +2,13 @@ import sys
 import os
 from unittest.mock import MagicMock, patch
 
-# Mock rpi_rf and RPi.GPIO before importing controller
-sys.modules['rpi_rf'] = MagicMock()
-sys.modules['RPi.GPIO'] = MagicMock()
+# Conditionally mock rpi_rf and RPi.GPIO if they are not available
+try:
+    import rpi_rf
+    import RPi.GPIO
+except ImportError:
+    sys.modules['rpi_rf'] = MagicMock()
+    sys.modules['RPi.GPIO'] = MagicMock()
 
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src')))
