@@ -9,22 +9,34 @@ import time
 import threading
 import RPi.GPIO as GPIO
 from collections import defaultdict
+from datetime import datetime
 
 TX_PIN = 17
 RX_PIN = 27
 TEST_CODE = 1332531
 
-print("=" * 70)
-print("ULTIMATE RF SELF-TEST")
-print("=" * 70)
-print()
-print("This test will try EVERYTHING to get the receiver to decode properly.")
-print("It will take about 5 minutes. Just let it run!")
-print()
-print(f"Transmitter: GPIO {TX_PIN}")
-print(f"Receiver: GPIO {RX_PIN}")
-print(f"Test code: {TEST_CODE}")
-print()
+# Setup logging to file
+LOG_FILE = "/home/baymax/cherrypi/rf_test_results.txt"
+log_lines = []
+
+def log(message, also_print=True):
+    """Log to both console and file"""
+    log_lines.append(message)
+    if also_print:
+        print(message)
+
+log("=" * 70)
+log("ULTIMATE RF SELF-TEST")
+log(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+log("=" * 70)
+log("")
+log("This test will try EVERYTHING to get the receiver to decode properly.")
+log("It will take about 5 minutes. Just let it run!")
+log("")
+log(f"Transmitter: GPIO {TX_PIN}")
+log(f"Receiver: GPIO {RX_PIN}")
+log(f"Test code: {TEST_CODE}")
+log("")
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(RX_PIN, GPIO.IN)
@@ -261,9 +273,9 @@ pulse_lengths = [150, 175, 189, 200, 225, 250, 300, 350, 400, 450, 500]
 # Protocols to try
 protocols = [1, 2, 3, 4, 5]
 
-print("Starting comprehensive test...")
-print("=" * 70)
-print()
+log("Starting comprehensive test...")
+log("=" * 70)
+log("")
 
 decoder = SimpleDecoder(tolerance=0.4)
 manchester = ManchesterDecoder()
@@ -275,6 +287,7 @@ test_num = 0
 for pulse in pulse_lengths:
     for proto in protocols:
         test_num += 1
+        # Progress indicator (console only, not logged)
         print(f"\r[{test_num}/{total_tests}] Testing pulse={pulse}µs, protocol={proto}...", end="", flush=True)
         
         # Transmit with this configuration
@@ -319,51 +332,51 @@ for pulse in pulse_lengths:
                     'result': result,
                     'match': result['code'] == TEST_CODE
                 })
-                print(f"\n   📡 {dec_name}: Code={result['code']} {match}")
+                log(f"\n   📡 {dec_name}: Code={result['code']} {match}")
         
         time.sleep(0.1)
 
-print("\n")
-print("=" * 70)
-print("RESULTS SUMMARY")
-print("=" * 70)
+log("\n")
+log("=" * 70)
+log("RESULTS SUMMARY")
+log("=" * 70)
 
 if successful_configs:
-    print(f"\n✅ Found {len(successful_configs)} successful decodes!\n")
+    log(f"\n✅ Found {len(successful_configs)} successful decodes!\n")
     
     # Group by match status
     matches = [c for c in successful_configs if c['match']]
     partial = [c for c in successful_configs if not c['match']]
     
     if matches:
-        print("🎉 EXACT MATCHES (these configurations work!):")
+        log("🎉 EXACT MATCHES (these configurations work!):")
         for cfg in matches:
-            print(f"   Pulse: {cfg['pulse']}µs, Protocol: {cfg['protocol']}, Decoder: {cfg['decoder']}")
+            log(f"   Pulse: {cfg['pulse']}µs, Protocol: {cfg['protocol']}, Decoder: {cfg['decoder']}")
         
         best = matches[0]
-        print(f"\n   Recommended settings for config.json:")
-        print(f'   "pulse_length": {best["pulse"]},')
-        print(f'   "protocol": {best["protocol"]}')
+        log(f"\n   Recommended settings for config.json:")
+        log(f'   "pulse_length": {best["pulse"]},')
+        log(f'   "protocol": {best["protocol"]}')
     
     if partial and not matches:
-        print("⚠️  Partial decodes (got codes but not exact match):")
+        log("⚠️  Partial decodes (got codes but not exact match):")
         for cfg in partial[:10]:
-            print(f"   Pulse: {cfg['pulse']}µs, Protocol: {cfg['protocol']}, "
+            log(f"   Pulse: {cfg['pulse']}µs, Protocol: {cfg['protocol']}, "
                   f"Decoder: {cfg['decoder']}, Got: {cfg['result']['code']}")
 else:
-    print("\n❌ No successful decodes with any configuration.")
-    print("\n   The receiver hardware may need replacement (RXB6 recommended).")
-    print("   Or try moving the receiver further from the Pi's electronics.")
+    log("\n❌ No successful decodes with any configuration.")
+    log("\n   The receiver hardware may need replacement (RXB6 recommended).")
+    log("   Or try moving the receiver further from the Pi's electronics.")
 
 # Also try rpi_rf library one more time with various settings
-print("\n" + "-" * 70)
-print("Bonus: Testing rpi_rf library with various pulse lengths...")
+log("\n" + "-" * 70)
+log("Bonus: Testing rpi_rf library with various pulse lengths...")
 
 try:
     from rpi_rf import RFDevice
     
     for pulse in [150, 189, 250, 350, 500]:
-        print(f"\n  Testing rpi_rf with pulse={pulse}µs...")
+        log(f"\n  Testing rpi_rf with pulse={pulse}µs...")
         
         # Setup receiver
         rx = RFDevice(RX_PIN)
@@ -378,9 +391,9 @@ try:
             time.sleep(0.3)
             
             if rx.rx_code and rx.rx_code > 1000:
-                print(f"    📡 Received: {rx.rx_code} (pulse: {rx.rx_pulselength})")
+                log(f"    📡 Received: {rx.rx_code} (pulse: {rx.rx_pulselength})")
                 if rx.rx_code == TEST_CODE:
-                    print(f"    🎉 MATCH!")
+                    log(f"    🎉 MATCH!")
                 rx.rx_code_timestamp = 0
         
         tx.cleanup()
@@ -388,10 +401,76 @@ try:
         time.sleep(0.2)
 
 except Exception as e:
-    print(f"  rpi_rf test error: {e}")
+    log(f"  rpi_rf test error: {e}")
 
 GPIO.cleanup()
 
-print("\n" + "=" * 70)
-print("Test complete!")
-print("=" * 70)
+# Save all results to file
+with open(LOG_FILE, 'w') as f:
+    f.write('\n'.join(log_lines))
+
+log("")
+log("=" * 70)
+log("Test complete!")
+log(f"Full results saved to: {LOG_FILE}")
+log("=" * 70)
+
+# Final save
+with open(LOG_FILE, 'w') as f:
+    f.write('\n'.join(log_lines))
+
+# ============================================================
+# FINAL SUMMARY - Always shown on screen
+# ============================================================
+print("\n")
+print("*" * 70)
+print("*" + " " * 68 + "*")
+print("*" + "  FINAL SUMMARY - COPY THIS TO SHARE RESULTS  ".center(68) + "*")
+print("*" + " " * 68 + "*")
+print("*" * 70)
+print()
+
+# Count results
+total_decodes = len(successful_configs)
+exact_matches = len([c for c in successful_configs if c['match']])
+partial_matches = len([c for c in successful_configs if not c['match']])
+
+print(f"📊 TEST STATISTICS:")
+print(f"   Total configurations tested: {total_tests}")
+print(f"   Successful decodes: {total_decodes}")
+print(f"   Exact matches (code={TEST_CODE}): {exact_matches}")
+print(f"   Partial matches (wrong code): {partial_matches}")
+print()
+
+if exact_matches > 0:
+    print("🎉 SUCCESS! Found working configurations:")
+    matches = [c for c in successful_configs if c['match']]
+    for cfg in matches[:5]:  # Show top 5
+        print(f"   ✓ Pulse: {cfg['pulse']}µs, Protocol: {cfg['protocol']}, Decoder: {cfg['decoder']}")
+    print()
+    best = matches[0]
+    print(f"   📝 RECOMMENDED SETTINGS:")
+    print(f"      pulse_length: {best['pulse']}")
+    print(f"      protocol: {best['protocol']}")
+elif partial_matches > 0:
+    print("⚠️  PARTIAL SUCCESS - Decoded signals but wrong codes:")
+    partials = [c for c in successful_configs if not c['match']]
+    for cfg in partials[:5]:
+        print(f"   • Pulse: {cfg['pulse']}µs, Got code: {cfg['result']['code']}")
+    print()
+    print("   This means the receiver IS working but timing needs adjustment.")
+    print("   Try adjusting the tuning coil slightly more.")
+else:
+    print("❌ NO SUCCESSFUL DECODES")
+    print()
+    print("   The receiver could not decode any transmitted signals.")
+    print("   Hardware recommendations:")
+    print("   1. Order RXB6 superheterodyne receiver (~$3)")
+    print("   2. Add 0.1µF capacitor between VCC and GND")
+    print("   3. Try different GPIO pin for receiver")
+
+print()
+print("*" * 70)
+print()
+print(f"Full log saved to: {LOG_FILE}")
+print("View with: cat ~/cherrypi/rf_test_results.txt")
