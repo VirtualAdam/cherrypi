@@ -136,22 +136,18 @@ test_configs = [
 for pulse, proto in test_configs:
     print(f"Testing pulse={pulse}µs, protocol={proto}...", end=" ", flush=True)
     
-    # Transmit
-    tx_code_raw(TEST_CODE, pulse, proto, repeats=20)
-    time.sleep(0.1)
-    
     # Capture during transmission
     import threading
     results = []
     
     def capture():
         nonlocal results
-        results = capture_and_decode(duration=2.5, expected_pulse=pulse)
+        results = capture_and_decode(duration=1.0, expected_pulse=pulse)  # Reduced from 2.5s
     
     cap_thread = threading.Thread(target=capture)
     cap_thread.start()
-    time.sleep(0.3)
-    tx_code_raw(TEST_CODE, pulse, proto, repeats=30)
+    time.sleep(0.1)
+    tx_code_raw(TEST_CODE, pulse, proto, repeats=10)  # Reduced from 30
     cap_thread.join()
     
     # Check results
@@ -168,7 +164,7 @@ for pulse, proto in test_configs:
     else:
         print("✗ No decode")
     
-    time.sleep(0.2)
+    time.sleep(0.05)  # Reduced from 0.2
 
 print()
 print("=" * 70)
