@@ -285,11 +285,10 @@ for pulse in pulse_lengths:
         
         # Capture during next transmission
         capture_thread_done = False
-        captured_timings = []
+        captured_timings = [None]  # Use list to allow modification in nested function
         
         def capture_while_transmitting():
-            nonlocal captured_timings
-            captured_timings = decoder.capture(duration=1.5)
+            captured_timings[0] = decoder.capture(duration=1.5)
         
         # Start capture
         cap_thread = threading.Thread(target=capture_while_transmitting)
@@ -301,13 +300,16 @@ for pulse in pulse_lengths:
         
         cap_thread.join()
         
+        # Get the captured timings
+        timings = captured_timings[0] if captured_timings[0] else []
+        
         # Try all decoders
         for dec_name, dec_func in [
             ('Simple', lambda t: decoder.decode(t, pulse)),
             ('Manchester', lambda t: manchester.decode(t, pulse)),
             ('PWM', lambda t: pwm_decoder.decode(t)),
         ]:
-            result = dec_func(captured_timings)
+            result = dec_func(timings)
             if result and result['code'] > 1000:
                 match = "✓ MATCH!" if result['code'] == TEST_CODE else f"got {result['code']}"
                 successful_configs.append({
