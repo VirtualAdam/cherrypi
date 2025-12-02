@@ -155,12 +155,3 @@ This script subscribes to a Redis channel (`rf_commands`) and executes controlle
     # From another terminal or machine
     docker exec -it cherrypi-redis-1 redis-cli publish rf_commands '{"outlet": 1, "state": "on"}'
     ```
-
-## Integration
-
-You can update the `toggle.php` or other scripts in the parent directory to call these Python scripts instead of the compiled C++ binaries.
-
-For example, in PHP:
-```php
-shell_exec("python3 /path/to/python_impl/codesend.py $code -p $pulseLength");
-```
