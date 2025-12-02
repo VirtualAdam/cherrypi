@@ -6,7 +6,7 @@ Run this on the Pi to verify it can capture codes from the remote.
 Usage:
     python3 test_custom_decoder.py
 
-Press a button on your remote within 30 seconds.
+Hold a button on your remote, then press Enter.
 """
 
 import time
@@ -22,20 +22,18 @@ def main():
     print("Custom RF Decoder Test")
     print("=" * 60)
     print()
-    print("This test will listen for RF codes using our calibrated decoder.")
     print("Calibration: 275µs short pulse, 640µs long pulse")
-    print()
-    print("Press a button on your remote...")
     print()
     
     decoder = CustomRFDecoder(gpio_pin=27)
     
     try:
-        # Try to receive up to 5 codes
-        for i in range(5):
-            print(f"[Attempt {i+1}/5] Listening for 30 seconds...")
+        while True:
+            print("-" * 40)
+            input("Hold a button on your remote, then press ENTER...")
+            print("Listening for 2 seconds...")
             
-            result = decoder.receive(timeout=30)
+            result = decoder.receive(timeout=2)
             
             if result:
                 print()
@@ -45,24 +43,13 @@ def main():
                 print(f"   Short pulse:  {result.get('short_pulse', 'N/A')}µs")
                 print(f"   Long pulse:   {result.get('long_pulse', 'N/A')}µs")
                 print(f"   Bits:         {result.get('bits', 'N/A')}")
-                print()
-                
-                # Ask to continue
-                try:
-                    cont = input("Press another button? (y/n): ").strip().lower()
-                    if cont != 'y':
-                        break
-                    print()
-                except EOFError:
-                    break
             else:
-                print("   No code received (timeout)")
-                print()
-        
-        print("Test complete!")
+                print("❌ No code received")
+            
+            print()
         
     except KeyboardInterrupt:
-        print("\n\nStopped by user")
+        print("\n\nStopped by user (Ctrl+C)")
     finally:
         decoder.cleanup()
 
