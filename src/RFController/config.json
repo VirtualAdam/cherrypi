@@ -9,8 +9,9 @@
   "settings": {
     "gpio_tx_pin": 17,
     "gpio_rx_pin": 27,
-    "pulse_length": 189,
+    "pulse_length": 275,
     "protocol": 1,
+    "rx_tolerance": 0.35,
     "sniffer_timeout": 30
   }
 }

@@ -7,13 +7,17 @@ from unittest.mock import MagicMock, patch
 # Add RFController to path for relative imports within that module
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src/RFController')))
 
-# Conditionally mock rpi_rf and RPi.GPIO if they are not available
+# Conditionally mock rpi_rf, RPi.GPIO, and custom_rf_decoder if they are not available
 try:
     import rpi_rf
     import RPi.GPIO
 except ImportError:
     sys.modules['rpi_rf'] = MagicMock()
     sys.modules['RPi.GPIO'] = MagicMock()
+
+# Mock custom_rf_decoder for tests
+mock_decoder = MagicMock()
+sys.modules['custom_rf_decoder'] = mock_decoder
 
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src')))

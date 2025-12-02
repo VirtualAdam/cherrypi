@@ -13,13 +13,21 @@ import time
 import threading
 from config_manager import get_settings
 
-# Try to import rpi_rf, but allow graceful degradation for non-Pi environments
+# Try to import custom RF decoder, then fall back to rpi_rf
 try:
-    from rpi_rf import RFDevice
+    from custom_rf_decoder import CustomRFDecoder
     RF_AVAILABLE = True
+    USE_CUSTOM_DECODER = True
+    logging.info("Using custom RF decoder (calibrated for this hardware)")
 except ImportError:
-    RF_AVAILABLE = False
-    logging.warning("rpi_rf not available - sniffer will run in mock mode")
+    USE_CUSTOM_DECODER = False
+    try:
+        from rpi_rf import RFDevice
+        RF_AVAILABLE = True
+        logging.info("Using rpi_rf decoder")
+    except ImportError:
+        RF_AVAILABLE = False
+        logging.warning("No RF decoder available - sniffer will run in mock mode")
 
 # Configuration
 REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
@@ -80,7 +88,51 @@ def run_sniffer(r, request_id, capture_type):
     }))
     
     try:
-        if RF_AVAILABLE:
+        if RF_AVAILABLE and USE_CUSTOM_DECODER:
+            # Use our calibrated custom decoder
+            decoder = CustomRFDecoder(gpio_pin)
+            start_time = time.time()
+            
+            logging.info(f"Using custom decoder (calibrated: 275µs short, 640µs long)")
+            
+            while not stop_sniffer.is_set():
+                # Check timeout
+                if time.time() - start_time > timeout:
+                    logging.info("Sniffer timeout reached")
+                    r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
+                        'request_id': request_id,
+                        'event': 'timeout',
+                        'capture_type': capture_type,
+                        'error': 'No code received within timeout period'
+                    }))
+                    break
+                
+                # Try to receive a code (with short timeout)
+                result = decoder.receive(timeout=5)
+                
+                if result and result['code'] > 1000:
+                    code = result['code']
+                    pulselength = result['pulselength']
+                    protocol = result.get('protocol', 1)
+                    
+                    logging.info(f"Captured code: {code} [pulselength: {pulselength}µs, protocol: {protocol}]")
+                    logging.info(f"  Short/Long pulse: {result.get('short_pulse', 'N/A')}µs / {result.get('long_pulse', 'N/A')}µs")
+                    
+                    # Publish captured code
+                    r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
+                        'request_id': request_id,
+                        'event': 'captured',
+                        'capture_type': capture_type,
+                        'code': code,
+                        'pulselength': pulselength,
+                        'protocol': protocol
+                    }))
+                    break
+            
+            decoder.cleanup()
+            
+        elif RF_AVAILABLE:
+            # Fallback to rpi_rf decoder
             rfdevice = RFDevice(gpio_pin)
             rfdevice.enable_rx()
             timestamp = None
