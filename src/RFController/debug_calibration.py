@@ -138,17 +138,18 @@ for pulse, proto in test_configs:
     
     # Capture during transmission
     import threading
-    results = []
+    results_holder = [None]  # Use list to avoid nonlocal issues
     
     def capture():
-        nonlocal results
-        results = capture_and_decode(duration=1.0, expected_pulse=pulse)  # Reduced from 2.5s
+        results_holder[0] = capture_and_decode(duration=1.0, expected_pulse=pulse)  # Reduced from 2.5s
     
     cap_thread = threading.Thread(target=capture)
     cap_thread.start()
     time.sleep(0.1)
     tx_code_raw(TEST_CODE, pulse, proto, repeats=10)  # Reduced from 30
     cap_thread.join()
+    
+    results = results_holder[0] if results_holder[0] else []
     
     # Check results
     matches = [r for r in results if r['code'] == TEST_CODE]
