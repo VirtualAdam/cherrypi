@@ -1,0 +1,10 @@
+# Docker Compose override for Windows/Mac development
+# Use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# This skips the RF Controller since there's no GPIO
+
+services:
+  frontend:
+    environment:
+      - CHOKIDAR_USEPOLLING=true  # Better file watching on Windows
+    volumes:
+      - ./src/frontend/src:/app/src  # Hot reload for development

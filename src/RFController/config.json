@@ -1,0 +1,16 @@
+{
+  "switches": [
+    {"id": 1, "name": "Outlet 1", "on_code": 1332531, "off_code": 1332540},
+    {"id": 2, "name": "Outlet 2", "on_code": 1332675, "off_code": 1332684},
+    {"id": 3, "name": "Outlet 3", "on_code": 1332995, "off_code": 1333004},
+    {"id": 4, "name": "Outlet 4", "on_code": 1334531, "off_code": 1334540},
+    {"id": 5, "name": "Outlet 5", "on_code": 1340675, "off_code": 1340684}
+  ],
+  "settings": {
+    "gpio_tx_pin": 17,
+    "gpio_rx_pin": 27,
+    "pulse_length": 189,
+    "protocol": 1,
+    "sniffer_timeout": 30
+  }
+}

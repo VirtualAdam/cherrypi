@@ -129,6 +129,11 @@
   margin-bottom: 20px;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 10px;
+}
+
 .btn-logout {
   background-color: transparent;
   border: 1px solid #666;
@@ -140,4 +145,42 @@
 
 .btn-logout:hover {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-utilities {
+  background-color: transparent;
+  border: 1px solid #61dafb;
+  color: #61dafb;
+  font-size: 0.8rem;
+  padding: 5px 15px;
+  width: auto;
+}
+
+.btn-utilities:hover {
+  background-color: rgba(97, 218, 251, 0.1);
+}
+
+.loading-message {
+  color: #aaa;
+  font-size: 1rem;
+}
+
+.no-switches-message {
+  background: #3b404e;
+  padding: 40px;
+  border-radius: 15px;
+  text-align: center;
+}
+
+.no-switches-message p {
+  color: #aaa;
+  margin-bottom: 20px;
+}
+
+.btn-add-first {
+  background-color: #28a745;
+  color: white;
+  padding: 15px 30px;
+  font-size: 1rem;
+  width: auto;
 }

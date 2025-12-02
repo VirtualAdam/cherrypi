@@ -4,22 +4,28 @@ import argparse
 import logging
 import time
 from rpi_rf import RFDevice
+from config_manager import get_outlets_dict, get_settings, load_config
 
-# Configuration
-GPIO_PIN = 17
-PULSE_LENGTH = 189
-PROTOCOL = 1
+# Load configuration from config.json
+def get_config():
+    """Load settings from config"""
+    settings = get_settings()
+    return {
+        'gpio_pin': settings.get('gpio_tx_pin', 17),
+        'pulse_length': settings.get('pulse_length', 189),
+        'protocol': settings.get('protocol', 1)
+    }
 
-# Outlet Codes
-OUTLETS = {
-    1: {"on": 1332531, "off": 1332540},
-    2: {"on": 1332675, "off": 1332684},
-    3: {"on": 1332995, "off": 1333004},
-    4: {"on": 1334531, "off": 1334540},
-    5: {"on": 1340675, "off": 1340684},
-}
+def get_outlets():
+    """Load outlets from config"""
+    return get_outlets_dict()
 
-def send_code(code, gpio=GPIO_PIN, pulselength=PULSE_LENGTH, protocol=PROTOCOL):
+def send_code(code, gpio=None, pulselength=None, protocol=None):
+    config = get_config()
+    gpio = gpio or config['gpio_pin']
+    pulselength = pulselength or config['pulse_length']
+    protocol = protocol or config['protocol']
+    
     rfdevice = RFDevice(gpio)
     rfdevice.enable_tx()
     rfdevice.tx_code(code, protocol, pulselength)
@@ -27,7 +33,9 @@ def send_code(code, gpio=GPIO_PIN, pulselength=PULSE_LENGTH, protocol=PROTOCOL):
     logging.info(f"Sent code: {code}")
 
 def control_outlet(outlet_id, state):
-    if outlet_id not in OUTLETS:
+    outlets = get_outlets()
+    
+    if outlet_id not in outlets:
         logging.error(f"Invalid outlet ID: {outlet_id}")
         return
 
@@ -35,7 +43,7 @@ def control_outlet(outlet_id, state):
         logging.error("State must be 'on' or 'off'")
         return
 
-    code = OUTLETS[outlet_id][state.lower()]
+    code = outlets[outlet_id][state.lower()]
     logging.info(f"Turning Outlet {outlet_id} {state.upper()}...")
     send_code(code)
 

@@ -46,7 +46,7 @@ We have provided a convenience script to install Docker and Node.js.
 
 3. **Start Redis:**
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 4. **Backend Setup:**
@@ -70,6 +70,50 @@ We have provided a convenience script to install Docker and Node.js.
    pip install -r requirements.txt
    python redis_listener.py
    ```
+
+## Quick Start (All Services)
+
+After completing the installation steps above, you can start all services with a single command:
+
+```bash
+chmod +x start_all.sh
+./start_all.sh
+```
+
+To stop all services:
+```bash
+./stop_all.sh
+```
+
+## Docker (Recommended)
+
+Run everything in Docker containers for a consistent experience on any platform.
+
+### On Windows/Mac (Development)
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+
+### On Raspberry Pi (Production)
+```bash
+docker compose -f docker-compose.yml -f docker-compose.pi.yml up -d
+```
+
+### Docker Commands
+```bash
+# View logs (all services)
+docker compose logs -f
+
+# View logs (single service)
+docker compose logs -f backend
+
+# Stop all services
+docker compose down
+
+# Rebuild after code changes
+docker compose build
+docker compose up -d
+```
 
 ## Testing
 

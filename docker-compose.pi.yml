@@ -1,0 +1,11 @@
+# Docker Compose override for Raspberry Pi
+# Use with: docker compose -f docker-compose.yml -f docker-compose.pi.yml up -d
+
+services:
+  rf-controller:
+    privileged: true
+    devices:
+      - /dev/gpiomem:/dev/gpiomem
+    volumes:
+      - ./src/RFController/config.json:/app/config.json
+    profiles: []  # Remove profile restriction, always run on Pi
