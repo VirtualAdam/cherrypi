@@ -1,7 +1,7 @@
 # CherryPi Project Status
 
-**Last Updated:** December 2, 2025, Evening  
-**Status:** RF Receiver debugging in progress - close to solution
+**Last Updated:** December 2, 2025, Late Night  
+**Status:** RF Receiver DECODING WORKS ✅ - Integration with sniffer service NOT WORKING ❌
 
 ---
 
@@ -34,7 +34,7 @@ CherryPi is a home automation system for controlling 433MHz RF outlet switches v
 ### Hardware
 - **Raspberry Pi 4 Model B** - Debian 13 (Trixie), Python 3.13.5
 - **433MHz TX Module** - Connected to GPIO 17 (WORKING ✅)
-- **433MHz RX Module (MX-RM-5V)** - Connected to GPIO 27 (debugging)
+- **433MHz RX Module (MX-RM-5V)** - Connected to GPIO 27 (WORKING ✅)
 
 ### Software Stack
 - **OS:** Debian 13 (Trixie) with kernel 6.12
@@ -43,168 +43,127 @@ CherryPi is a home automation system for controlling 433MHz RF outlet switches v
 - **Docker:** Services containerized via docker-compose.yml
 - **Database:** Redis for pub/sub and state management
 
-### Key Files
-- `src/RFController/config.json` - Switch configuration and RF settings
-- `src/RFController/controller.py` - TX controller (sends codes)
-- `src/RFController/sniffer_service.py` - RX sniffer (captures codes from remotes)
-- `src/RFController/custom_rf_decoder.py` - NEW: Custom decoder (bypasses rpi_rf)
-- `src/RFController/config_manager.py` - Configuration CRUD operations
-- `src/backend/main.py` - FastAPI REST API
-- `src/frontend/` - React web application
-
 ---
 
-## Current Task: RF Receiver Debugging
+## 🎉 MAJOR BREAKTHROUGH: RF Decoding Works!
 
-### Goal
-Enable the "Add Switch" wizard in the web UI to capture RF codes from physical remotes by sniffing their 433MHz transmissions.
+We successfully decoded RF codes with **99%+ accuracy** using sync gap detection.
 
-### What's Working ✅
-1. **TX (Transmitting)** - Completely working. Can control existing outlets.
-2. **GPIO Detection** - RX module IS detecting signals (3500+ transitions in 2 seconds)
-3. **Hardware Wiring** - Confirmed correct:
-   - VCC → 5V (Pin 2)
-   - GND → Ground (Pin 6)  
-   - DATA → GPIO 27 (Pin 13)
-
-### The Problem
-The receiver captures data but decoding fails. We're getting ~1700 transitions per second even when pressing the remote button, mixing signal with noise.
-
----
-
-## Debugging History (DO NOT REPEAT THESE)
-
-### ❌ Failed Approach 1: rpi_rf Library
-- **What:** Used standard `rpi_rf` library with `RFDevice(27).enable_rx()`
-- **Result:** Decoded garbage codes (4, 5, 8, 262144) instead of actual codes like 1332531
-- **Why it failed:** rpi_rf doesn't work properly with Python 3.13 + rpi-lgpio combination
-- **Files:** Original `sniffer_service.py` used this
-
-### ❌ Failed Approach 2: Simple GPIO Polling
-- **What:** Basic polling loop checking `GPIO.input(27)` for transitions
-- **Result:** Captured transitions but couldn't decode - too much noise mixed with signal
-- **Files:** Early versions of debug scripts
-
-### ❌ Failed Approach 3: Edge Detection with Callbacks
-- **What:** Used `GPIO.add_event_detect()` with callbacks
-- **Result:** Callback approach had timing issues, missed pulses
-- **Why:** Python callback overhead too slow for µs-level timing
-
-### ⚠️ Partial Success: Bit-by-Bit Analysis (debug_calibration.py)
-- **What:** Captured raw timings, analyzed pulse durations, decoded bit by bit
-- **Result:** ACHIEVED PERFECT 24/24 BIT MATCH on one test!
-- **Key Discovery:** 
-  - Short pulse: **275µs** (not 189µs as originally configured)
-  - Long pulse: **640µs**
-  - Ratio: **~2.33** (close to protocol 2's 1:2 ratio)
-- **Problem:** Only worked in controlled test, not in continuous sniffer mode
-- **File:** `debug_calibration.py` on the Pi (not in repo)
-
-### ❌ Failed Approach 4: CustomRFDecoder Class
-- **What:** Created `custom_rf_decoder.py` based on calibration findings
-- **Result:** `receive()` method returns None - can't find valid codes in noise
-- **Why:** Continuous capture mixes noise with signal, can't isolate code segments
-
-### 🔄 Current Approach: Sync Gap Detection (IN PROGRESS)
-- **What:** Look for sync gaps (>4000µs) to identify where code transmissions start
-- **Status:** Code written but not yet tested
-- **File:** `test_custom_decoder.py` (updated but not pushed)
-- **Theory:** PT2262/EV1527 protocols have a long sync pulse between code repeats
-
----
-
-## Latest Test Results (December 2, 2025 Evening)
-
+### Test Results (December 2, 2025)
 ```
+Hold button on remote, then press ENTER...
 Capturing for 2 seconds...
-  Captured 3605 transitions
-  Short pulses (150-450µs): 1793
-  Long pulses (450-1200µs): 1721
-❌ Could not decode a valid code
+  Total transitions: 4234
+  Sync gaps (>4000µs): 85
+  Valid segments found: 84
+
+✅ Codes captured:
+   Code: 1334540 (seen 83x)  ← EXACT MATCH to known OFF code
+   Code: 1334531 (seen 84x)  ← EXACT MATCH to known ON code
+   Short: 180µs, Long: 550µs
 ```
 
-**Analysis:**
-- GPIO IS receiving data (3605 transitions = healthy signal)
-- Roughly 50/50 split of short/long pulses suggests valid RF encoding
-- Problem: Can't separate signal from background noise
-- Need: Sync gap detection to find code boundaries
+### Key Algorithm Discovery
+- **Sync Gap Detection:** PT2262/EV1527 remotes have ~5700µs gaps between code repeats
+- **Threshold:** Pulses >4000µs mark segment boundaries
+- **Pulse Timings:** Short ~180µs, Long ~550µs (ratio ~3:1)
+- **Accuracy:** 99%+ (83-84 matches out of 84-85 segments)
 
----
-
-## Unpushed Changes
-
-The following changes are in the local repo but may not be pushed:
-
-1. **`test_custom_decoder.py`** - Updated with sync gap detection logic
-   - Looks for pulses >4000µs as segment boundaries
-   - Decodes each segment separately
-   - Counts how many times each code appears
-
-To push these changes:
-```powershell
-cd C:\Users\awiedemann\Projects\CherryPi
-git add -A
-git commit -m "Add sync gap detection to find code segments"
-git push
-```
-
----
-
-## Next Steps (Morning)
-
-### Priority 1: Push and Test Sync Gap Detection
-```powershell
-# On Windows - push the changes
-cd C:\Users\awiedemann\Projects\CherryPi
-git add -A; git commit -m "Add sync gap detection"; git push
-```
-
+### Working Test Script
+`src/RFController/test_custom_decoder.py` - This script WORKS perfectly when run directly:
 ```bash
-# On Pi - pull and test
-cd ~/cherrypi && git pull
-source venv/bin/activate
+cd ~/cherrypi && source venv/bin/activate
 python3 src/RFController/test_custom_decoder.py
 ```
-Check if sync gaps are being detected and if segments decode properly.
 
-### Priority 2: If Sync Detection Fails
-Try lowering the sync gap threshold or analyze the raw timing data:
-- Print first 100 pulse durations to see the pattern
-- Look for any pulses >2000µs that could be sync markers
-- The remote likely sends the code 4-8 times in rapid succession
+---
 
-### Priority 3: Alternative - Hardware Noise Reduction
-If software decoding continues to fail:
-- Add 0.1µF capacitor between VCC and GND on receiver
-- Try different antenna length (17.3cm is ideal for 433MHz)
-- Move receiver away from Pi (EMI from Pi can cause noise)
+## ❌ Current Problem: Sniffer Service Integration
 
-### Priority 4: Once Decoding Works
-1. Update `custom_rf_decoder.py` with working algorithm
-2. Update `sniffer_service.py` to use custom decoder
-3. Test end-to-end: Web UI → Start Sniffer → Capture Code → Save Switch
+The decoding algorithm works in `test_custom_decoder.py` but the web UI's "Add Switch" wizard never completes. When clicking "Start Capture" in the UI, it never times out or returns results.
+
+### What We Know
+1. `test_custom_decoder.py` works perfectly when run directly on the Pi
+2. The sniffer service (`sniffer_service.py`) is triggered via Redis pub/sub
+3. Something is preventing the capture from completing in the service
+
+### Suspected Issues
+1. **Docker GPIO Access** - The sniffer runs in Docker; GPIO might not be accessible
+2. **Import Failure** - `custom_rf_decoder.py` imports RPi.GPIO at module level, which may fail in Docker
+3. **Threading/Redis** - The sniffer runs in a background thread; something may be blocking
+4. **Silent Exception** - An error might be swallowed without publishing a result
+
+### Files Involved
+- `src/RFController/sniffer_service.py` - Listens for Redis commands, runs capture
+- `src/RFController/custom_rf_decoder.py` - The decoding algorithm (works standalone)
+- `src/RFController/test_custom_decoder.py` - Standalone test script (WORKS ✅)
+
+---
+
+## Next Steps for Morning
+
+### Priority 1: Diagnose Why Sniffer Service Fails
+```bash
+# On Pi - check Docker logs for errors
+cd ~/cherrypi && git pull
+docker compose logs rfcontroller --tail 100
+
+# Look for:
+# - "Using custom RF decoder" vs "Using rpi_rf decoder" (import issue)
+# - Any exceptions or errors
+# - "Sniffer finished" message (should appear after 2 seconds)
+```
+
+### Priority 2: Test If Docker Has GPIO Access
+```bash
+# Test if GPIO works inside the rfcontroller container
+docker compose exec rfcontroller python3 -c "import RPi.GPIO as GPIO; print('GPIO OK')"
+```
+
+### Priority 3: If Docker GPIO Fails
+The sniffer may need to run OUTSIDE Docker, directly on the Pi. Options:
+1. Run `sniffer_service.py` as a systemd service instead of in Docker
+2. Use Docker's `--privileged` flag and device mapping for GPIO
+3. Check the `Dockerfile` for proper GPIO device mounting
+
+### Priority 4: Simple Debug Test
+Add logging to see what's happening:
+```python
+# In sniffer_service.py, add at the start of run_sniffer():
+logging.info(f"RF_AVAILABLE={RF_AVAILABLE}, USE_CUSTOM_DECODER={USE_CUSTOM_DECODER}")
+```
+
+---
+
+## Known Working Codes
+
+| Outlet | ON Code | OFF Code |
+|--------|---------|----------|
+| 1 | 1332531 | 1332540 |
+| 2 | 1332675 | 1332684 |
+| 3 | 1332995 | 1333004 |
+| 4 | 1334531 | 1334540 |
+| 5 | 1340675 | 1340684 |
+
+**Pulse Length:** ~180µs (measured), 189µs (original config)  
+**Protocol:** 1
 
 ---
 
 ## Configuration Reference
 
-### config.json Settings (Current)
+### config.json Settings
 ```json
 {
   "settings": {
     "gpio_tx_pin": 17,
     "gpio_rx_pin": 27,
-    "pulse_length": 275,
+    "pulse_length": 189,
     "protocol": 1,
     "sniffer_timeout": 30
   }
 }
 ```
-
-### Known Working Code (for testing)
-- **Code:** 1332531 (from existing remote)
-- **Pulse Length:** 275µs (calibrated)
-- **Protocol:** 1 (but ratio suggests protocol 2 might work too)
 
 ---
 
@@ -215,16 +174,18 @@ If software decoding continues to fail:
 # Activate venv
 cd ~/cherrypi && source venv/bin/activate
 
-# Run test script
+# Pull latest code
+git pull
+
+# Run the WORKING test script
 python3 src/RFController/test_custom_decoder.py
 
 # Check Docker services
 docker compose ps
-docker compose logs -f
+docker compose logs -f rfcontroller
 
-# GPIO info
-pinout
-gpio readall
+# Rebuild and restart Docker
+docker compose down && docker compose up -d --build
 ```
 
 ### On Windows Dev Machine
@@ -239,36 +200,29 @@ git add -A; git commit -m "message"; git push
 
 ---
 
-## Debug Scripts on Pi (Not in Repo)
-
-These were created during debugging and exist only on the Pi in ~/cherrypi or ~/:
-- `debug_receiver.py` - Basic GPIO test
-- `debug_gpio_raw.py` - Raw transition counter
-- `debug_signal_analysis.py` - Timing histogram
-- `debug_protocol_test.py` - Protocol comparison
-- `debug_self_test.py` - TX→RX loopback test (PASSED)
-- `debug_tuning.py` - Noise level measurement
-- `debug_custom_decoder.py` - Custom decode attempts
-- `debug_ultimate_test.py` - Comprehensive test
-- `debug_calibration.py` - **THIS ONE GOT PERFECT MATCH** ⭐
-
----
-
-## Key Insight for Next Agent
-
-The receiver DOES work. We proved it with `debug_calibration.py` achieving a perfect 24/24 bit match. The challenge is that:
-
-1. There's constant background noise (~145 transitions/sec even with no remote)
-2. When button is pressed, signal mixes with noise (~1700+ transitions/sec)
-3. Need to find sync gaps or use statistical methods to extract valid codes
-
-The sync gap approach in the updated `test_custom_decoder.py` is the most promising next step. PT2262 remotes typically have a sync pulse of ~31× the short pulse length (275µs × 31 ≈ 8500µs), so looking for gaps >4000µs should isolate code segments.
-
----
-
 ## Tests Status
 All 15 tests passing ✅
 ```
 test/RFController/test_controller.py - 7 tests
 test/backend/test_main.py - 8 tests
 ```
+
+---
+
+## Key Files Modified Tonight
+
+1. **`custom_rf_decoder.py`** - Rewritten with sync gap detection algorithm
+2. **`sniffer_service.py`** - Simplified to use 2-second capture window (but not working in Docker)
+3. **`test_custom_decoder.py`** - Restored; this is the WORKING reference implementation
+
+---
+
+## Summary for Next Agent
+
+**THE DECODING ALGORITHM WORKS.** We proved it with `test_custom_decoder.py` achieving perfect code matches.
+
+The remaining issue is getting the same algorithm to work when triggered from the web UI's "Add Switch" wizard. The sniffer service receives the command via Redis but never returns results.
+
+Most likely cause: Docker container can't access GPIO, so the custom decoder import fails and it falls back to broken rpi_rf code, or GPIO.input() hangs.
+
+**Start by checking Docker logs and testing GPIO access inside the container.**
