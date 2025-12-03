@@ -158,8 +158,8 @@ class CustomRFDecoder:
         """
         Listen for RF codes with timeout using sync gap detection.
         
-        Captures 2-second windows and looks for the most frequently
-        occurring code (filters out noise/bit errors).
+        DEPRECATED: Use capture_single_window() for better UX.
+        This method loops until it finds a code, which isn't ideal.
         
         Returns decoded result or None on timeout.
         """
@@ -167,46 +167,89 @@ class CustomRFDecoder:
         start_time = time.time()
         
         while time.time() - start_time < timeout:
-            # Capture a 2-second window
-            timings = self.capture_raw_timings(duration=2.0)
-            
-            if len(timings) < 40:
-                continue
-            
-            # Find code segments using sync gap detection
-            segments = self.find_code_segments(timings)
-            
-            if not segments:
-                continue
-            
-            # Try to decode each segment and count code occurrences
-            codes_found = {}
-            for seg in segments:
-                result = self.decode_segment(seg)
-                if result and result['code'] > 1000:
-                    code = result['code']
-                    if code not in codes_found:
-                        codes_found[code] = {
-                            'result': result,
-                            'count': 1
-                        }
-                    else:
-                        codes_found[code]['count'] += 1
-            
-            if codes_found:
-                # Return the most frequently seen code (most reliable)
-                best_code = max(codes_found.items(), key=lambda x: x[1]['count'])
-                code_value = best_code[0]
-                code_data = best_code[1]
-                
-                logger.info(f"Decoded code {code_value} (seen {code_data['count']}x)")
-                
-                return code_data['result']
-            
-            # Brief pause before next capture window
+            result = self.capture_single_window(duration=2.0)
+            if result:
+                return result
             time.sleep(0.1)
         
         return None
+
+    def capture_single_window(self, duration=2.0):
+        """
+        Capture a single window of RF data and decode it.
+        
+        This is the preferred method for the Add Switch wizard:
+        1. User holds button on remote
+        2. User clicks "Start Capture" in UI
+        3. This method captures for `duration` seconds
+        4. Returns the most frequently seen code (filters outliers)
+        
+        Args:
+            duration: How long to capture (default 2 seconds)
+            
+        Returns:
+            dict with code info if successful, None if no valid code found
+            Also includes 'segments_found' and 'times_seen' for debugging
+        """
+        self.setup()
+        
+        # Capture raw timings
+        timings = self.capture_raw_timings(duration=duration)
+        
+        if len(timings) < 40:
+            logger.warning(f"Too few transitions captured: {len(timings)}")
+            return None
+        
+        # Find sync gaps for debugging
+        sync_gaps = [t[0] for t in timings if t[0] > self.sync_gap_threshold]
+        logger.info(f"Captured {len(timings)} transitions, {len(sync_gaps)} sync gaps")
+        
+        # Find code segments using sync gap detection
+        segments = self.find_code_segments(timings)
+        
+        if not segments:
+            logger.warning("No valid code segments found")
+            return None
+        
+        logger.info(f"Found {len(segments)} valid segments")
+        
+        # Try to decode each segment and count code occurrences
+        codes_found = {}
+        for seg in segments:
+            result = self.decode_segment(seg)
+            if result and result['code'] > 1000:
+                code = result['code']
+                if code not in codes_found:
+                    codes_found[code] = {
+                        'result': result,
+                        'count': 1
+                    }
+                else:
+                    codes_found[code]['count'] += 1
+        
+        if not codes_found:
+            logger.warning("Could not decode any valid codes from segments")
+            return None
+        
+        # Find the most frequently seen code (filters out noise/bit errors)
+        best_code = max(codes_found.items(), key=lambda x: x[1]['count'])
+        code_value = best_code[0]
+        code_data = best_code[1]
+        
+        # Add metadata for debugging
+        result = code_data['result'].copy()
+        result['times_seen'] = code_data['count']
+        result['segments_found'] = len(segments)
+        result['total_codes_found'] = len(codes_found)
+        
+        # Log any outliers for debugging
+        if len(codes_found) > 1:
+            outliers = [f"{c} ({d['count']}x)" for c, d in codes_found.items() if c != code_value]
+            logger.info(f"Primary code: {code_value} ({code_data['count']}x), outliers: {outliers}")
+        else:
+            logger.info(f"Decoded code {code_value} (seen {code_data['count']}x, 100% consistent)")
+        
+        return result
 
 
 # Test if run directly
