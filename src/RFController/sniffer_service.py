@@ -58,11 +58,13 @@ def run_sniffer(r, request_id, capture_type):
     """
     Run the RF sniffer and capture codes.
     
-    Uses "capture then analyze" approach:
-    1. User should already be holding the button when they click Start
-    2. We capture for 2 seconds
-    3. Analyze captured data and find the most frequent code
-    4. Return the result
+    Simple flow:
+    1. Capture GPIO data for exactly 2 seconds (blocking)
+    2. Analyze the captured data
+    3. Find the most frequent code (filters outliers)
+    4. Return result
+    
+    No loops, no complex timeout management.
     
     Args:
         r: Redis client
@@ -77,127 +79,109 @@ def run_sniffer(r, request_id, capture_type):
     logging.info(f"Starting sniffer on GPIO {gpio_pin} for {capture_type} button")
     
     # Update status in Redis
-    status = {
+    r.set(SNIFFER_STATUS_KEY, json.dumps({
         'active': True,
         'request_id': request_id,
         'capture_type': capture_type,
         'started_at': time.time()
-    }
-    r.set(SNIFFER_STATUS_KEY, json.dumps(status))
+    }))
     
-    # Publish starting notification - tell user to hold the button
+    # Publish starting notification
     r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
         'request_id': request_id,
         'event': 'started',
         'capture_type': capture_type,
-        'message': f'Capturing {capture_type.upper()} button for {capture_duration} seconds...'
+        'message': f'Capturing for {capture_duration} seconds...'
     }))
     
     try:
         if RF_AVAILABLE and USE_CUSTOM_DECODER:
-            # Use our calibrated custom decoder with sync gap detection
-            decoder = CustomRFDecoder(gpio_pin)
-            
             logging.info(f"Using custom decoder - capturing for {capture_duration}s")
             
-            # Single capture window - user should already be holding the button
+            # Create decoder and capture for exactly 2 seconds
+            decoder = CustomRFDecoder(gpio_pin)
             result = decoder.capture_single_window(duration=capture_duration)
+            decoder.cleanup()
             
-            if result and result['code'] > 1000:
+            # Analyze result
+            if result and result.get('code', 0) > 1000:
                 code = result['code']
-                pulselength = result['pulselength']
-                protocol = result.get('protocol', 1)
-                times_seen = result.get('times_seen', 1)
-                segments_found = result.get('segments_found', 0)
+                logging.info(f"SUCCESS: Captured code {code} (seen {result.get('times_seen', 1)}x)")
                 
-                logging.info(f"Captured code: {code} (seen {times_seen}x in {segments_found} segments)")
-                logging.info(f"  Pulse: {result.get('short_pulse', 'N/A')}µs / {result.get('long_pulse', 'N/A')}µs")
-                
-                # Publish captured code
                 r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
                     'request_id': request_id,
                     'event': 'captured',
                     'capture_type': capture_type,
                     'code': code,
-                    'pulselength': pulselength,
-                    'protocol': protocol,
-                    'times_seen': times_seen,
-                    'segments_found': segments_found
+                    'pulselength': result.get('pulselength', 180),
+                    'protocol': result.get('protocol', 1),
+                    'times_seen': result.get('times_seen', 1),
+                    'segments_found': result.get('segments_found', 0)
                 }))
             else:
-                logging.warning("No valid code captured")
+                logging.warning("No valid code found in captured data")
                 r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
                     'request_id': request_id,
-                    'event': 'timeout',
+                    'event': 'no_code',
                     'capture_type': capture_type,
-                    'error': 'No valid code captured. Make sure you are holding the button before clicking Start.'
+                    'error': 'No valid code captured. Hold the button BEFORE clicking Start.'
                 }))
-            
-            decoder.cleanup()
-            
+        
         elif RF_AVAILABLE:
-            # Fallback to rpi_rf decoder (not recommended - less accurate)
-            logging.warning("Using rpi_rf fallback - may be less accurate than custom decoder")
+            # Fallback to rpi_rf - simple 2 second capture
+            logging.warning("Using rpi_rf fallback (less accurate)")
+            from rpi_rf import RFDevice
+            
             rfdevice = RFDevice(gpio_pin)
             rfdevice.enable_rx()
-            timestamp = None
-            start_time = time.time()
-            fallback_timeout = 10  # 10 second timeout for fallback
             
-            while not stop_sniffer.is_set():
-                # Check timeout
-                if time.time() - start_time > fallback_timeout:
-                    logging.info("Sniffer timeout reached")
-                    r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
-                        'request_id': request_id,
-                        'event': 'timeout',
-                        'capture_type': capture_type,
-                        'error': 'No code received within timeout period'
-                    }))
-                    break
-                
-                if rfdevice.rx_code_timestamp != timestamp:
-                    timestamp = rfdevice.rx_code_timestamp
-                    code = rfdevice.rx_code
-                    pulselength = rfdevice.rx_pulselength
-                    protocol = rfdevice.rx_proto
-                    
-                    logging.info(f"Captured code: {code} [pulselength: {pulselength}, protocol: {protocol}]")
-                    
-                    # Publish captured code
-                    r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
-                        'request_id': request_id,
-                        'event': 'captured',
-                        'capture_type': capture_type,
-                        'code': code,
-                        'pulselength': pulselength,
-                        'protocol': protocol
-                    }))
-                    break
-                
+            # Capture for 2 seconds, take whatever code we get
+            start_time = time.time()
+            captured_code = None
+            
+            while time.time() - start_time < capture_duration:
+                if rfdevice.rx_code_timestamp:
+                    captured_code = {
+                        'code': rfdevice.rx_code,
+                        'pulselength': rfdevice.rx_pulselength,
+                        'protocol': rfdevice.rx_proto
+                    }
                 time.sleep(0.01)
             
             rfdevice.cleanup()
-        else:
-            # Mock mode for testing on non-Pi systems
-            logging.info("Running in mock mode - simulating code capture")
-            start_time = time.time()
             
-            while not stop_sniffer.is_set():
-                if time.time() - start_time > 5:  # Shorter timeout for mock
-                    # Simulate receiving a code after 5 seconds
-                    mock_code = 1234567 if capture_type == 'on' else 1234568
-                    r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
-                        'request_id': request_id,
-                        'event': 'captured',
-                        'capture_type': capture_type,
-                        'code': mock_code,
-                        'pulselength': 189,
-                        'protocol': 1,
-                        'mock': True
-                    }))
-                    break
-                time.sleep(0.1)
+            if captured_code and captured_code['code'] > 1000:
+                r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
+                    'request_id': request_id,
+                    'event': 'captured',
+                    'capture_type': capture_type,
+                    'code': captured_code['code'],
+                    'pulselength': captured_code['pulselength'],
+                    'protocol': captured_code['protocol']
+                }))
+            else:
+                r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
+                    'request_id': request_id,
+                    'event': 'no_code',
+                    'capture_type': capture_type,
+                    'error': 'No valid code captured with rpi_rf fallback.'
+                }))
+        
+        else:
+            # Mock mode for testing
+            logging.info("Mock mode - simulating 2 second capture")
+            time.sleep(capture_duration)
+            
+            mock_code = 1234567 if capture_type == 'on' else 1234568
+            r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
+                'request_id': request_id,
+                'event': 'captured',
+                'capture_type': capture_type,
+                'code': mock_code,
+                'pulselength': 180,
+                'protocol': 1,
+                'mock': True
+            }))
                 
     except Exception as e:
         logging.exception(f"Sniffer error: {e}")
@@ -207,13 +191,12 @@ def run_sniffer(r, request_id, capture_type):
             'capture_type': capture_type,
             'error': str(e)
         }))
+    
     finally:
         sniffer_active = False
-        # Clear status
         r.set(SNIFFER_STATUS_KEY, json.dumps({'active': False}))
         stop_sniffer.clear()
-        
-        logging.info("Sniffer stopped")
+        logging.info("Sniffer finished")
 
 
 def handle_command(r, message):
