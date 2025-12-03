@@ -12,7 +12,12 @@ Based on successful calibration:
 
 import time
 import logging
-import RPi.GPIO as GPIO
+
+# Import GPIO - try rpi-lgpio first (for newer kernels), then RPi.GPIO
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    raise ImportError("RPi.GPIO not available - custom RF decoder requires GPIO access")
 
 logger = logging.getLogger(__name__)
 

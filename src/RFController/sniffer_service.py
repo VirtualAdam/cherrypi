@@ -136,15 +136,17 @@ def run_sniffer(r, request_id, capture_type):
             decoder.cleanup()
             
         elif RF_AVAILABLE:
-            # Fallback to rpi_rf decoder
+            # Fallback to rpi_rf decoder (not recommended - less accurate)
+            logging.warning("Using rpi_rf fallback - may be less accurate than custom decoder")
             rfdevice = RFDevice(gpio_pin)
             rfdevice.enable_rx()
             timestamp = None
             start_time = time.time()
+            fallback_timeout = 10  # 10 second timeout for fallback
             
             while not stop_sniffer.is_set():
                 # Check timeout
-                if time.time() - start_time > timeout:
+                if time.time() - start_time > fallback_timeout:
                     logging.info("Sniffer timeout reached")
                     r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
                         'request_id': request_id,
