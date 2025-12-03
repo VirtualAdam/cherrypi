@@ -89,11 +89,11 @@ def run_sniffer(r, request_id, capture_type):
     
     try:
         if RF_AVAILABLE and USE_CUSTOM_DECODER:
-            # Use our calibrated custom decoder
+            # Use our calibrated custom decoder with sync gap detection
             decoder = CustomRFDecoder(gpio_pin)
             start_time = time.time()
             
-            logging.info(f"Using custom decoder (calibrated: 275µs short, 640µs long)")
+            logging.info(f"Using custom decoder with sync gap detection (>4000µs gaps)")
             
             while not stop_sniffer.is_set():
                 # Check timeout
