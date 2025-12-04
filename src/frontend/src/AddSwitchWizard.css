@@ -4,7 +4,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12,91 +13,99 @@
 }
 
 .wizard-modal {
-  background-color: #2a2a2a;
-  border-radius: 15px;
+  background-color: var(--bg-card);
+  border-radius: 16px;
   padding: 40px;
   max-width: 500px;
   width: 90%;
   position: relative;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
 }
 
 .wizard-close {
   position: absolute;
-  top: 15px;
+  top: 20px;
   right: 20px;
   background: none;
   border: none;
-  color: #888;
-  font-size: 28px;
+  color: var(--text-muted);
+  font-size: 24px;
   cursor: pointer;
+  transition: color 0.2s;
 }
 
 .wizard-close:hover {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .wizard-step h3 {
-  color: #61dafb;
+  color: var(--accent-primary);
   margin-bottom: 20px;
-  font-size: 24px;
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 
 .wizard-step p {
-  color: #ccc;
-  margin-bottom: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
   line-height: 1.6;
 }
 
 .wizard-buttons {
   display: flex;
   gap: 15px;
-  justify-content: center;
+  justify-content: flex-end;
   margin-top: 30px;
 }
 
 .btn {
-  padding: 12px 30px;
+  padding: 12px 24px;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 1rem;
   cursor: pointer;
   border: none;
-  font-weight: bold;
+  font-weight: 600;
   transition: all 0.2s;
 }
 
 .btn-primary {
-  background-color: #61dafb;
-  color: #000;
-}
-
-.btn-primary:hover {
-  background-color: #4db8db;
-}
-
-.btn-secondary {
-  background-color: #444;
+  background-color: var(--accent-primary);
   color: #fff;
 }
 
+.btn-primary:hover {
+  background-color: var(--accent-primary-hover);
+}
+
+.btn-secondary {
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+}
+
 .btn-secondary:hover {
-  background-color: #555;
+  background-color: var(--border-color);
 }
 
 .btn-capture {
-  background-color: #28a745;
+  background-color: var(--accent-primary);
   color: white;
-  font-size: 18px;
-  padding: 15px 40px;
+  font-size: 1.1rem;
+  padding: 16px 40px;
+  width: 100%;
+  margin-top: 20px;
 }
 
 .btn-capture:hover {
-  background-color: #218838;
+  background-color: var(--accent-primary-hover);
 }
 
 .capturing {
   text-align: center;
-  padding: 20px;
+  padding: 30px;
+  color: var(--accent-primary);
+  font-weight: 500;
+  animation: pulse 1.5s infinite;
 }
 
 .spinner {

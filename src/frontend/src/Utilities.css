@@ -2,6 +2,7 @@
   width: 100%;
   max-width: 900px;
   padding: 20px;
+  margin: 0 auto;
 }
 
 .utilities-header {
@@ -14,57 +15,71 @@
 .utilities-header h2 {
   margin: 0;
   flex: 1;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .btn-back {
-  background-color: #6c757d;
-  color: white;
-  border: none;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
   padding: 10px 20px;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 0.95rem;
+  transition: all 0.2s;
 }
 
 .btn-back:hover {
-  background-color: #5a6268;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
 }
 
 .loading, .error, .no-switches {
   text-align: center;
-  padding: 20px;
-  color: #ccc;
+  padding: 40px;
+  color: var(--text-secondary);
 }
 
 .error {
-  color: #dc3545;
+  color: var(--accent-danger);
 }
 
 .switches-list {
-  background-color: #2a2a2a;
-  border-radius: 10px;
+  background-color: var(--bg-card);
+  border-radius: 12px;
   overflow: hidden;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow);
 }
 
 .switches-header {
   display: grid;
   grid-template-columns: 60px 1fr 120px 120px 150px;
-  gap: 10px;
+  gap: 15px;
   padding: 15px 20px;
-  background-color: #333;
-  font-weight: bold;
-  color: #aaa;
-  font-size: 12px;
+  background-color: var(--bg-secondary);
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .switch-row {
   display: grid;
   grid-template-columns: 60px 1fr 120px 120px 150px;
-  gap: 10px;
-  padding: 15px 20px;
-  border-bottom: 1px solid #3a3a3a;
+  gap: 15px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border-color);
   align-items: center;
+  background-color: var(--bg-card);
+  transition: background-color 0.2s;
+}
+
+.switch-row:hover {
+  background-color: var(--bg-secondary);
 }
 
 .switch-row:last-child {
@@ -77,26 +92,37 @@
 
 .switch-id {
   font-weight: bold;
-  color: #61dafb;
+  color: var(--accent-primary);
 }
 
 .switch-name {
-  color: #fff;
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
 .switch-code {
-  font-family: monospace;
-  color: #aaa;
-  font-size: 12px;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  background-color: var(--bg-input);
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-align: center;
 }
 
 .edit-input {
-  background-color: #3a3a3a;
-  border: 1px solid #555;
-  border-radius: 4px;
-  padding: 8px;
-  color: white;
-  font-size: 14px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
 }
 
 .edit-input:focus {
