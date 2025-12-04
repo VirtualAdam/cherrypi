@@ -224,10 +224,17 @@ async def wait_for_sniffer_result(request_id: str, timeout: float = 35.0):
             if message and message['type'] == 'message':
                 data = json.loads(message['data'])
                 if data.get('request_id') == request_id:
-                    return data
+                    event = data.get('event')
+                    # Only return on terminal events (captured, error, no_code, timeout)
+                    # Skip 'started' event - that's just a progress notification
+                    if event in ['captured', 'error', 'no_code', 'timeout', 'stopped']:
+                        logging.info(f"Sniffer result: {event} for request {request_id}")
+                        return data
+                    else:
+                        logging.info(f"Sniffer progress: {event} for request {request_id}")
             
             if asyncio.get_event_loop().time() - start_time > timeout:
-                return {"event": "timeout", "error": "Sniffer timeout"}
+                return {"event": "timeout", "error": "Sniffer timeout - no response from RF controller"}
             
             await asyncio.sleep(0.05)
     finally:

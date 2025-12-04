@@ -13,19 +13,26 @@ import time
 import threading
 from config_manager import get_settings
 
+# Set up logging early
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - [SnifferService] %(message)s'
+)
+
 # Try to import custom RF decoder, then fall back to rpi_rf
 try:
     from custom_rf_decoder import CustomRFDecoder, RFDecodeError
     RF_AVAILABLE = True
     USE_CUSTOM_DECODER = True
-    logging.info("Using custom RF decoder (calibrated for this hardware)")
-except ImportError:
+    logging.info("✅ Using custom RF decoder (calibrated for this hardware)")
+except ImportError as e:
     USE_CUSTOM_DECODER = False
     RFDecodeError = None  # Won't be used if custom decoder not available
+    logging.warning(f"Custom RF decoder not available: {e}")
     try:
         from rpi_rf import RFDevice
         RF_AVAILABLE = True
-        logging.info("Using rpi_rf decoder")
+        logging.info("Using rpi_rf decoder (fallback)")
     except ImportError:
         RF_AVAILABLE = False
         logging.warning("No RF decoder available - sniffer will run in mock mode")
@@ -283,13 +290,12 @@ def handle_command(r, message):
 
 
 def main():
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - [SnifferService] %(message)s'
-    )
+    # Logging already configured at module level
+    
+    logging.info(f"RF_AVAILABLE={RF_AVAILABLE}, USE_CUSTOM_DECODER={USE_CUSTOM_DECODER}")
     
     if not RF_AVAILABLE:
-        logging.warning("rpi_rf not available - running in mock mode for testing")
+        logging.warning("⚠️ No RF decoder available - running in mock mode for testing")
     
     logging.info(f"Connecting to Redis at {REDIS_HOST}:{REDIS_PORT}...")
     
