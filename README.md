@@ -141,3 +141,4 @@ pip install rpi-lgpio
 pip install rpi-rf --no-deps
 pip install redis
 ```
+cd ~/cherrypi && git pull && docker compose down && docker compose up -d --build

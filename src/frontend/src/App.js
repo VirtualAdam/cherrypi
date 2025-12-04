@@ -1,16 +1,80 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Login from './Login';
 import EditSwitches from './EditSwitches';
 import './App.css';
 
+// Auth context helper
+const getAuthToken = () => localStorage.getItem('cherrypi-token');
+const getAuthUser = () => {
+  const user = localStorage.getItem('cherrypi-user');
+  return user ? JSON.parse(user) : null;
+};
+const setAuthData = (token, user) => {
+  localStorage.setItem('cherrypi-token', token);
+  localStorage.setItem('cherrypi-user', JSON.stringify(user));
+};
+const clearAuthData = () => {
+  localStorage.removeItem('cherrypi-token');
+  localStorage.removeItem('cherrypi-user');
+};
+
+// Helper to make authenticated API calls
+const authFetch = async (url, options = {}) => {
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
+  
+  const response = await fetch(url, { ...options, headers });
+  
+  // Handle 401 - token expired or invalid
+  if (response.status === 401) {
+    clearAuthData();
+    window.location.reload();
+    throw new Error('Session expired');
+  }
+  
+  return response;
+};
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('control');
   const [switches, setSwitches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('cherrypi-theme') || 'dark';
   });
+
+  // Check for existing auth on mount
+  useEffect(() => {
+    const token = getAuthToken();
+    const savedUser = getAuthUser();
+    
+    if (token && savedUser) {
+      // Verify token is still valid
+      authFetch('/api/auth/verify', { method: 'POST' })
+        .then(response => {
+          if (response.ok) {
+            setIsLoggedIn(true);
+            setUser(savedUser);
+          } else {
+            clearAuthData();
+          }
+        })
+        .catch(() => {
+          clearAuthData();
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+  }, []);
 
   // Apply theme to document
   useEffect(() => {
@@ -19,16 +83,12 @@ function App() {
   }, [theme]);
 
   // Fetch switches from API
-  useEffect(() => {
-    if (isLoggedIn && currentPage === 'control') {
-      fetchSwitches();
-    }
-  }, [isLoggedIn, currentPage]);
-
-  const fetchSwitches = async () => {
+  const fetchSwitches = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/switches');
+      // Use secure endpoint if logged in, otherwise try public endpoint
+      const endpoint = isLoggedIn ? '/api/secure/switches' : '/api/switches';
+      const response = await authFetch(endpoint);
       if (response.ok) {
         const data = await response.json();
         setSwitches(data);
@@ -42,16 +102,33 @@ function App() {
     } finally {
       setLoading(false);
     }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (isLoggedIn && currentPage === 'control') {
+      fetchSwitches();
+    }
+  }, [isLoggedIn, currentPage, fetchSwitches]);
+
+  const handleLogin = (token, userData) => {
+    setAuthData(token, userData);
+    setIsLoggedIn(true);
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    clearAuthData();
+    setIsLoggedIn(false);
+    setUser(null);
   };
 
   const handleToggle = async (outletId, state) => {
     console.log(`Outlet ${outletId} turned ${state}`);
     try {
-      const response = await fetch('/api/outlet', {
+      // Use secure endpoint for authenticated users
+      const endpoint = isLoggedIn ? '/api/secure/outlet' : '/api/outlet';
+      const response = await authFetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ outlet_id: outletId, state: state }),
       });
 
@@ -69,12 +146,15 @@ function App() {
     }
   };
 
+  // Check if user can edit switches (admin or user role)
+  const canEditSwitches = user && (user.role === 'admin' || user.role === 'user');
+
   if (!isLoggedIn) {
     return (
       <div className="App">
         <header className="App-header">
           <h1>Outlet Control</h1>
-          <Login onLogin={setIsLoggedIn} theme={theme} onThemeToggle={setTheme} />
+          <Login onLogin={handleLogin} theme={theme} onThemeToggle={setTheme} />
         </header>
       </div>
     );
@@ -85,7 +165,10 @@ function App() {
     return (
       <div className="App">
         <header className="App-header">
-          <EditSwitches onBack={() => { setCurrentPage('control'); fetchSwitches(); }} />
+          <EditSwitches 
+            onBack={() => { setCurrentPage('control'); fetchSwitches(); }}
+            authFetch={authFetch}
+          />
         </header>
       </div>
     );
@@ -97,11 +180,17 @@ function App() {
       <header className="App-header">
         <div className="header-top">
           <h1>Outlet Control</h1>
+          <div className="user-info">
+            <span className="username">{user?.username}</span>
+            <span className={`role-badge role-${user?.role}`}>{user?.role}</span>
+          </div>
           <div className="header-buttons">
-            <button className="btn btn-secondary" onClick={() => setCurrentPage('edit')}>
-              Edit
-            </button>
-            <button className="btn btn-secondary" onClick={() => setIsLoggedIn(false)}>
+            {canEditSwitches && (
+              <button className="btn btn-secondary" onClick={() => setCurrentPage('edit')}>
+                Edit
+              </button>
+            )}
+            <button className="btn btn-secondary" onClick={handleLogout}>
               Logout
             </button>
           </div>

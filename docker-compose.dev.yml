@@ -3,8 +3,20 @@
 # This skips the RF Controller since there's no GPIO
 
 services:
+  auth-service:
+    environment:
+      # Set these in your .env file or export them before running
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-only-not-for-production}
+      - AUTH_DB_KEY=${AUTH_DB_KEY:-dev-only-not-for-production}
+    volumes:
+      - ./src/auth_service:/app  # Hot reload for development
+      - auth_data_dev:/data
+
   frontend:
     environment:
       - CHOKIDAR_USEPOLLING=true  # Better file watching on Windows
     volumes:
       - ./src/frontend/src:/app/src  # Hot reload for development
+
+volumes:
+  auth_data_dev:

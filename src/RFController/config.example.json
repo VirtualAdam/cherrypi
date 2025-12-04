@@ -1,6 +1,6 @@
 {
   "switches": [
-    {"id": 1, "name": "Switch 1", "on_code": 4543795, "off_code": 4543804}
+    {"id": 1, "name": "Example Switch", "on_code": 1234567, "off_code": 1234568}
   ],
   "settings": {
     "gpio_tx_pin": 17,

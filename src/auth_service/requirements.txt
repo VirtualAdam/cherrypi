@@ -1,0 +1,6 @@
+redis
+bcrypt
+pyjwt
+python-dotenv
+cryptography
+qrcode[pil]

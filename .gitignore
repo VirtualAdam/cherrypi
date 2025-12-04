@@ -3,3 +3,48 @@ __pycache__/
 *.pyc
 .DS_Store
 venv/
+
+# Environment files with secrets
+.env
+.env.local
+.env.production
+*.env
+
+# Auth service sensitive data
+src/auth_service/data/
+*.enc
+users.enc
+
+# RF Controller config (contains your specific RF codes)
+src/RFController/config.json
+
+# Personal notes/status files
+status.md
+codes.md
+
+# Magic QR output files
+magic_qr.html
+magic_qr.png
+
+# Node modules
+node_modules/
+
+# Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test/coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# OS files
+Thumbs.db

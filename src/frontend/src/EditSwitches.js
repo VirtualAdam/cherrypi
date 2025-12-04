@@ -1,21 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './EditSwitches.css';
 
-function EditSwitches({ onBack }) {
+function EditSwitches({ onBack, authFetch }) {
   const [switches, setSwitches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newSwitch, setNewSwitch] = useState(null);
   const [scanningState, setScanningState] = useState({});
 
-  useEffect(() => {
-    fetchSwitches();
-  }, []);
+  // Use authFetch if provided, otherwise fall back to regular fetch
+  const apiFetch = useCallback((url, options) => {
+    return authFetch ? authFetch(url, options) : fetch(url, options);
+  }, [authFetch]);
 
-  const fetchSwitches = async () => {
+  const fetchSwitches = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/switches');
+      const endpoint = authFetch ? '/api/secure/switches' : '/api/switches';
+      const response = await apiFetch(endpoint);
       if (!response.ok) throw new Error('Failed to fetch switches');
       const data = await response.json();
       setSwitches(data);
@@ -25,14 +27,18 @@ function EditSwitches({ onBack }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiFetch, authFetch]);
+
+  useEffect(() => {
+    fetchSwitches();
+  }, [fetchSwitches]);
 
   const handleScan = async (codeType) => {
     const scanKey = `new-${codeType}`;
     setScanningState(prev => ({ ...prev, [scanKey]: 'listening' }));
 
     try {
-      const response = await fetch('/api/sniffer/start', {
+      const response = await apiFetch('/api/sniffer/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ capture_type: codeType }),
@@ -61,7 +67,8 @@ function EditSwitches({ onBack }) {
     if (!window.confirm(`Delete "${switchName}"?`)) return;
     
     try {
-      await fetch(`/api/switches/${switchId}`, { method: 'DELETE' });
+      const endpoint = authFetch ? `/api/secure/switches/${switchId}` : `/api/switches/${switchId}`;
+      await apiFetch(endpoint, { method: 'DELETE' });
       fetchSwitches();
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -83,7 +90,8 @@ function EditSwitches({ onBack }) {
     }
 
     try {
-      const response = await fetch('/api/switches', {
+      const endpoint = authFetch ? '/api/secure/switches' : '/api/switches';
+      const response = await apiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSwitch),

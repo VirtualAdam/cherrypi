@@ -7,12 +7,27 @@ services:
     volumes:
       - redis_data:/data
 
+  auth-service:
+    build: ./src/auth_service
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
+      - AUTH_DB_KEY=${AUTH_DB_KEY:-change-me-in-production-db-key}
+      - AUTH_DATA_DIR=/data
+    restart: always
+    volumes:
+      - auth_data:/data
+
   backend:
     build: ./src/backend
     ports:
       - "8000:8000"
     depends_on:
       - redis
+      - auth-service
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -44,3 +59,4 @@ services:
 
 volumes:
   redis_data:
+  auth_data:

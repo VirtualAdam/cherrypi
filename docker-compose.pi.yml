@@ -2,6 +2,16 @@
 # Use with: docker compose -f docker-compose.yml -f docker-compose.pi.yml up -d
 
 services:
+  auth-service:
+    environment:
+      # These should be set in .env file on the Pi
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - AUTH_DB_KEY=${AUTH_DB_KEY}
+    volumes:
+      - auth_data:/data
+      # Mount for physical-access scripts
+      - ./src/auth_service:/app/scripts:ro
+
   rf-controller:
     privileged: true
     devices:
