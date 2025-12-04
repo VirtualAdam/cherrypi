@@ -36,12 +36,11 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     restart: always
-    # Uncomment below for Raspberry Pi GPIO access
-    # privileged: true
-    # devices:
-    #   - /dev/gpiomem:/dev/gpiomem
-    profiles:
-      - pi  # Only runs with: docker compose --profile pi up
+    privileged: true
+    devices:
+      - /dev/gpiomem:/dev/gpiomem
+    volumes:
+      - ./src/RFController/config.json:/app/config.json
 
 volumes:
   redis_data:
