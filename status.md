@@ -1,7 +1,7 @@
 # CherryPi Project Status
 
-**Last Updated:** December 2, 2025, Late Night  
-**Status:** RF Receiver DECODING WORKS ✅ - Integration with sniffer service NOT WORKING ❌
+**Last Updated:** December 3, 2025  
+**Status:** RF Decoder IMPROVED ✅ - Clear error handling added
 
 ---
 
@@ -45,7 +45,39 @@ CherryPi is a home automation system for controlling 433MHz RF outlet switches v
 
 ---
 
-## 🎉 MAJOR BREAKTHROUGH: RF Decoding Works!
+## 🎉 December 3, 2025: Clear Error Handling Added
+
+### What Was Done
+Improved `custom_rf_decoder.py` to give **clear pass/fail results** instead of ambiguous `None` returns.
+
+### New `RFDecodeError` Exception
+The decoder now raises specific errors with actionable suggestions:
+
+| Error Type | Meaning | Suggestion |
+|------------|---------|------------|
+| `NO_SIGNAL` | No RF activity detected | Check remote is transmitting, move closer |
+| `NO_SYNC_GAPS` | Signal but no valid patterns | Hold button continuously, may not be PT2262 |
+| `INSUFFICIENT_SEGMENTS` | Not enough pattern repetitions | Signal too weak, try again |
+| `DECODE_FAILED` | Couldn't decode the segments | Protocol may not be compatible |
+| `AMBIGUOUS_SIGNAL` | Multiple different codes detected | Hold only ONE button, check for interference |
+| `WEAK_SIGNAL` | Code found but not consistent | Hold button firmly, try again |
+
+### New Result Fields on Success
+- `confidence`: 0.0-1.0 ratio of primary code to all decoded codes
+- `decode_success_rate`: Percentage of segments successfully decoded
+- `times_seen`: How many times the code was captured
+- `segments_found`: Total valid segments in the capture
+
+### Test on the Pi
+```bash
+cd ~/cherrypi && source venv/bin/activate
+git pull
+python3 src/RFController/test_custom_decoder.py
+```
+
+---
+
+## 🎉 December 2, 2025: RF Decoding Works!
 
 We successfully decoded RF codes with **99%+ accuracy** using sync gap detection.
 

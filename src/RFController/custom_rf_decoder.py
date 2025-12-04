@@ -22,6 +22,35 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+class RFDecodeError(Exception):
+    """
+    Exception raised when RF decoding fails with a clear reason.
+    
+    This replaces ambiguous None returns with specific error types:
+    - NO_SIGNAL: No RF activity detected at all
+    - NO_SYNC_GAPS: Signal detected but no valid protocol patterns
+    - INSUFFICIENT_SEGMENTS: Some patterns found but not enough
+    - DECODE_FAILED: Segments found but couldn't decode them
+    - AMBIGUOUS_SIGNAL: Multiple different codes detected (interference or multiple buttons)
+    - WEAK_SIGNAL: Code detected but not consistently enough
+    """
+    
+    def __init__(self, error_type: str, message: str, details: dict = None):
+        self.error_type = error_type
+        self.message = message
+        self.details = details or {}
+        super().__init__(message)
+    
+    def to_dict(self):
+        """Convert to dictionary for JSON serialization"""
+        return {
+            "error": True,
+            "error_type": self.error_type,
+            "message": self.message,
+            "details": self.details
+        }
+
+
 class CustomRFDecoder:
     """
     Custom RF decoder using sync gap detection and direct GPIO timing.
@@ -179,7 +208,7 @@ class CustomRFDecoder:
         
         return None
 
-    def capture_single_window(self, duration=2.0):
+    def capture_single_window(self, duration=2.0, min_confidence=0.5, min_segments=3):
         """
         Capture a single window of RF data and decode it.
         
@@ -187,39 +216,77 @@ class CustomRFDecoder:
         1. User holds button on remote
         2. User clicks "Start Capture" in UI
         3. This method captures for `duration` seconds
-        4. Returns the most frequently seen code (filters outliers)
+        4. Analyzes all patterns and picks the most likely signal
+        5. Returns clear error if no unambiguous signal detected
         
         Args:
             duration: How long to capture (default 2 seconds)
+            min_confidence: Minimum ratio of primary code occurrences to total segments (default 0.5)
+            min_segments: Minimum number of valid segments required (default 3)
             
         Returns:
-            dict with code info if successful, None if no valid code found
-            Also includes 'segments_found' and 'times_seen' for debugging
+            dict with code info if successful
+            Raises RFDecodeError with specific message if no clear signal detected
         """
         self.setup()
         
         # Capture raw timings
         timings = self.capture_raw_timings(duration=duration)
+        total_transitions = len(timings)
         
-        if len(timings) < 40:
-            logger.warning(f"Too few transitions captured: {len(timings)}")
-            return None
+        # Check 1: Did we capture any transitions at all?
+        if total_transitions < 40:
+            raise RFDecodeError(
+                error_type="NO_SIGNAL",
+                message=f"No RF signal detected. Only {total_transitions} transitions captured.",
+                details={
+                    "transitions": total_transitions,
+                    "expected_min": 40,
+                    "suggestion": "Make sure the remote is transmitting and close to the receiver."
+                }
+            )
         
-        # Find sync gaps for debugging
+        # Find sync gaps (markers between code transmissions)
         sync_gaps = [t[0] for t in timings if t[0] > self.sync_gap_threshold]
-        logger.info(f"Captured {len(timings)} transitions, {len(sync_gaps)} sync gaps")
+        num_sync_gaps = len(sync_gaps)
+        logger.info(f"Captured {total_transitions} transitions, {num_sync_gaps} sync gaps")
+        
+        # Check 2: Do we have sync gaps indicating PT2262/EV1527 protocol?
+        if num_sync_gaps < min_segments:
+            raise RFDecodeError(
+                error_type="NO_SYNC_GAPS",
+                message=f"No valid RF code pattern detected. Found {num_sync_gaps} sync gaps, need at least {min_segments}.",
+                details={
+                    "transitions": total_transitions,
+                    "sync_gaps_found": num_sync_gaps,
+                    "sync_gaps_needed": min_segments,
+                    "suggestion": "Hold the remote button continuously while capturing. The remote may not be compatible (needs PT2262/EV1527 protocol)."
+                }
+            )
         
         # Find code segments using sync gap detection
         segments = self.find_code_segments(timings)
+        num_segments = len(segments)
         
-        if not segments:
-            logger.warning("No valid code segments found")
-            return None
+        # Check 3: Did we get valid segments?
+        if num_segments < min_segments:
+            raise RFDecodeError(
+                error_type="INSUFFICIENT_SEGMENTS",
+                message=f"Not enough valid code segments. Found {num_segments}, need at least {min_segments}.",
+                details={
+                    "transitions": total_transitions,
+                    "sync_gaps": num_sync_gaps,
+                    "segments_found": num_segments,
+                    "segments_needed": min_segments,
+                    "suggestion": "The signal may be too weak or corrupted. Try moving the remote closer."
+                }
+            )
         
-        logger.info(f"Found {len(segments)} valid segments")
+        logger.info(f"Found {num_segments} valid segments")
         
         # Try to decode each segment and count code occurrences
         codes_found = {}
+        decode_failures = 0
         for seg in segments:
             result = self.decode_segment(seg)
             if result and result['code'] > 1000:
@@ -231,28 +298,82 @@ class CustomRFDecoder:
                     }
                 else:
                     codes_found[code]['count'] += 1
+            else:
+                decode_failures += 1
         
+        # Check 4: Could we decode any segments?
         if not codes_found:
-            logger.warning("Could not decode any valid codes from segments")
-            return None
+            raise RFDecodeError(
+                error_type="DECODE_FAILED",
+                message=f"Could not decode any valid codes from {num_segments} segments.",
+                details={
+                    "transitions": total_transitions,
+                    "sync_gaps": num_sync_gaps,
+                    "segments_found": num_segments,
+                    "decode_failures": decode_failures,
+                    "suggestion": "The signal format may not be compatible. This decoder works with PT2262/EV1527 protocols."
+                }
+            )
         
-        # Find the most frequently seen code (filters out noise/bit errors)
-        best_code = max(codes_found.items(), key=lambda x: x[1]['count'])
-        code_value = best_code[0]
-        code_data = best_code[1]
+        # Find the most frequently seen code
+        sorted_codes = sorted(codes_found.items(), key=lambda x: x[1]['count'], reverse=True)
+        best_code_value, best_code_data = sorted_codes[0]
+        best_count = best_code_data['count']
         
-        # Add metadata for debugging
-        result = code_data['result'].copy()
-        result['times_seen'] = code_data['count']
-        result['segments_found'] = len(segments)
+        # Calculate confidence: how dominant is the primary code?
+        total_decoded = sum(d['count'] for d in codes_found.values())
+        confidence = best_count / total_decoded if total_decoded > 0 else 0
+        
+        # Check 5: Is the signal clear and unambiguous?
+        if confidence < min_confidence:
+            # Build details about competing codes
+            competing_codes = [
+                {"code": c, "count": d['count'], "percentage": round(d['count']/total_decoded*100, 1)}
+                for c, d in sorted_codes[:5]  # Top 5 codes
+            ]
+            raise RFDecodeError(
+                error_type="AMBIGUOUS_SIGNAL",
+                message=f"Signal is ambiguous. Top code {best_code_value} only seen {best_count}/{total_decoded} times ({confidence*100:.0f}% confidence).",
+                details={
+                    "transitions": total_transitions,
+                    "segments_found": num_segments,
+                    "codes_decoded": total_decoded,
+                    "unique_codes": len(codes_found),
+                    "confidence": round(confidence, 2),
+                    "confidence_needed": min_confidence,
+                    "competing_codes": competing_codes,
+                    "suggestion": "Multiple different codes detected. Hold only ONE button, or there may be RF interference."
+                }
+            )
+        
+        # Check 6: Did we see the code enough times?
+        if best_count < min_segments:
+            raise RFDecodeError(
+                error_type="WEAK_SIGNAL",
+                message=f"Code {best_code_value} only detected {best_count} times, need at least {min_segments}.",
+                details={
+                    "code": best_code_value,
+                    "times_seen": best_count,
+                    "times_needed": min_segments,
+                    "confidence": round(confidence, 2),
+                    "suggestion": "The signal is too weak or intermittent. Hold the button firmly and try again."
+                }
+            )
+        
+        # SUCCESS! Build the result
+        result = best_code_data['result'].copy()
+        result['times_seen'] = best_count
+        result['segments_found'] = num_segments
         result['total_codes_found'] = len(codes_found)
+        result['confidence'] = round(confidence, 2)
+        result['decode_success_rate'] = round((total_decoded / num_segments) * 100, 1)
         
-        # Log any outliers for debugging
+        # Log results
         if len(codes_found) > 1:
-            outliers = [f"{c} ({d['count']}x)" for c, d in codes_found.items() if c != code_value]
-            logger.info(f"Primary code: {code_value} ({code_data['count']}x), outliers: {outliers}")
+            outliers = [f"{c} ({d['count']}x)" for c, d in sorted_codes[1:]]
+            logger.info(f"Primary code: {best_code_value} ({best_count}x, {confidence*100:.0f}% confidence), outliers: {outliers}")
         else:
-            logger.info(f"Decoded code {code_value} (seen {code_data['count']}x, 100% consistent)")
+            logger.info(f"Decoded code {best_code_value} (seen {best_count}x, 100% consistent)")
         
         return result
 

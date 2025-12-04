@@ -15,12 +15,13 @@ from config_manager import get_settings
 
 # Try to import custom RF decoder, then fall back to rpi_rf
 try:
-    from custom_rf_decoder import CustomRFDecoder
+    from custom_rf_decoder import CustomRFDecoder, RFDecodeError
     RF_AVAILABLE = True
     USE_CUSTOM_DECODER = True
     logging.info("Using custom RF decoder (calibrated for this hardware)")
 except ImportError:
     USE_CUSTOM_DECODER = False
+    RFDecodeError = None  # Won't be used if custom decoder not available
     try:
         from rpi_rf import RFDevice
         RF_AVAILABLE = True
@@ -100,13 +101,13 @@ def run_sniffer(r, request_id, capture_type):
             
             # Create decoder and capture for exactly 2 seconds
             decoder = CustomRFDecoder(gpio_pin)
-            result = decoder.capture_single_window(duration=capture_duration)
-            decoder.cleanup()
             
-            # Analyze result
-            if result and result.get('code', 0) > 1000:
+            try:
+                result = decoder.capture_single_window(duration=capture_duration)
+                
+                # SUCCESS! Code captured clearly
                 code = result['code']
-                logging.info(f"SUCCESS: Captured code {code} (seen {result.get('times_seen', 1)}x)")
+                logging.info(f"SUCCESS: Captured code {code} (seen {result.get('times_seen', 1)}x, {result.get('confidence', 1)*100:.0f}% confidence)")
                 
                 r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
                     'request_id': request_id,
@@ -116,16 +117,25 @@ def run_sniffer(r, request_id, capture_type):
                     'pulselength': result.get('pulselength', 180),
                     'protocol': result.get('protocol', 1),
                     'times_seen': result.get('times_seen', 1),
-                    'segments_found': result.get('segments_found', 0)
+                    'segments_found': result.get('segments_found', 0),
+                    'confidence': result.get('confidence', 1.0)
                 }))
-            else:
-                logging.warning("No valid code found in captured data")
+                
+            except RFDecodeError as e:
+                # Clear, specific error from decoder
+                logging.warning(f"RF decode error ({e.error_type}): {e.message}")
+                
                 r.publish(SNIFFER_RESULTS_CHANNEL, json.dumps({
                     'request_id': request_id,
-                    'event': 'no_code',
+                    'event': 'error',
                     'capture_type': capture_type,
-                    'error': 'No valid code captured. Hold the button BEFORE clicking Start.'
+                    'error_type': e.error_type,
+                    'error': e.message,
+                    'details': e.details
                 }))
+                
+            finally:
+                decoder.cleanup()
         
         elif RF_AVAILABLE:
             # Fallback to rpi_rf - simple 2 second capture
