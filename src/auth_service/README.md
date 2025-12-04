@@ -42,6 +42,10 @@ These scripts **only work from a physical console** (keyboard + monitor attached
 **Prerequisites:**
 - Keyboard and monitor connected to your Raspberry Pi
 - Docker containers running (`docker compose up -d`)
+- Python dependencies installed on the Pi:
+  ```bash
+  pip3 install -r src/auth_service/requirements.txt
+  ```
 
 **Steps:**
 
@@ -101,10 +105,18 @@ nano .env
 
 ```bash
 docker compose down
+docker compose build --no-cache auth-service
 docker compose up -d
 ```
 
 ### Generate Magic QR Code
+
+**First time only - install Python dependencies on the Pi:**
+```bash
+pip3 install -r src/auth_service/requirements.txt
+```
+
+**Steps:**
 
 1. From physical console (keyboard + monitor on Pi):
 
@@ -113,10 +125,22 @@ cd ~/CherryPi  # Navigate to project directory
 
 # Use the SAME AUTH_DB_KEY you created above
 export AUTH_DB_KEY='paste-your-64-character-key-here'
-export REDIS_HOST='localhost'  # Or Redis container IP
-export CHERRYPI_URL='http://cherrypi.local:3000'  # Your Pi's URL
+
+# Redis is running in Docker, so use the Docker bridge IP or container name
+# Find Redis container IP with: docker inspect cherrypi-redis-1 | grep IPAddress
+# Or use the Docker host gateway (usually works):
+export REDIS_HOST='172.17.0.1'  # Docker host gateway, or use actual Redis container IP
+
+# This URL is what your MOBILE DEVICE will use to reach the Pi
+# Use your Pi's actual IP address that other devices can reach:
+export CHERRYPI_URL='http://192.168.x.x:3000'  # Replace with your Pi's LAN IP
 
 python3 src/auth_service/generate_magic_qr.py
+```
+
+**To find your Pi's IP address:**
+```bash
+hostname -I | awk '{print $1}'
 ```
 
 2. The script will:

@@ -41,6 +41,7 @@ const authFetch = async (url, options = {}) => {
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authEnabled, setAuthEnabled] = useState(true);
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('control');
   const [switches, setSwitches] = useState([]);
@@ -51,29 +52,48 @@ function App() {
 
   // Check for existing auth on mount
   useEffect(() => {
-    const token = getAuthToken();
-    const savedUser = getAuthUser();
-    
-    if (token && savedUser) {
-      // Verify token is still valid
-      authFetch('/api/auth/verify', { method: 'POST' })
-        .then(response => {
+    const checkAuth = async () => {
+      try {
+        // First check if auth is enabled on the server
+        const statusResponse = await fetch('/api/auth/status');
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          if (!statusData.auth_enabled) {
+            // Auth disabled - auto-login as anonymous admin
+            setAuthEnabled(false);
+            setIsLoggedIn(true);
+            setUser({ username: 'anonymous', role: 'admin' });
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (e) {
+        // If status check fails, assume auth is enabled
+        console.log('Auth status check failed, assuming auth enabled');
+      }
+
+      // Auth is enabled - check for existing token
+      const token = getAuthToken();
+      const savedUser = getAuthUser();
+      
+      if (token && savedUser) {
+        // Verify token is still valid
+        try {
+          const response = await authFetch('/api/auth/verify', { method: 'POST' });
           if (response.ok) {
             setIsLoggedIn(true);
             setUser(savedUser);
           } else {
             clearAuthData();
           }
-        })
-        .catch(() => {
+        } catch {
           clearAuthData();
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
+        }
+      }
       setLoading(false);
-    }
+    };
+
+    checkAuth();
   }, []);
 
   // Apply theme to document
@@ -190,9 +210,11 @@ function App() {
                 Edit
               </button>
             )}
-            <button className="btn btn-secondary" onClick={handleLogout}>
-              Logout
-            </button>
+            {authEnabled && (
+              <button className="btn btn-secondary" onClick={handleLogout}>
+                Logout
+              </button>
+            )}
           </div>
         </div>
         

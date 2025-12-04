@@ -35,6 +35,9 @@ CONFIG_SWITCHES_KEY = 'config:switches'
 AUTH_REQUESTS_CHANNEL = 'auth:requests'
 AUTH_RESPONSES_CHANNEL = 'auth:responses'
 
+# Auth configuration - set to 'false' or '0' to disable authentication
+AUTH_ENABLED = os.getenv('AUTH_ENABLED', 'true').lower() not in ('false', '0', 'no', 'disabled')
+
 # Security
 security = HTTPBearer(auto_error=False)
 
@@ -137,12 +140,27 @@ async def send_auth_command(cmd: str, data: dict = None, timeout: float = 5.0):
 
 async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> AuthUser:
     """Dependency to verify JWT token and return user info"""
+    # If auth is disabled, return a default admin user
+    if not AUTH_ENABLED:
+        return AuthUser(
+            user_id='anonymous',
+            username='anonymous',
+            role='admin',
+            scope='read:all write:all admin:users'
+        )
+    
     if credentials is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     token = credentials.credentials
     
-    response = await send_auth_command("verify", {"token": token})
+    try:
+        response = await send_auth_command("verify", {"token": token})
+    except HTTPException as e:
+        # If auth service is unavailable and we want graceful degradation
+        if e.status_code == 504:  # Timeout
+            logging.warning("Auth service unavailable, denying request")
+        raise
     
     if not response.get('valid'):
         raise HTTPException(
@@ -444,6 +462,17 @@ async def health_check():
 
 
 # --- Auth Endpoints ---
+
+@app.get("/api/auth/status")
+async def auth_status():
+    """
+    Check if authentication is enabled.
+    Frontend can use this to skip login page if auth is disabled.
+    """
+    return {
+        "auth_enabled": AUTH_ENABLED
+    }
+
 
 @app.post("/api/auth/login")
 async def login(request: LoginRequest):

@@ -99,6 +99,63 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 docker compose -f docker-compose.yml -f docker-compose.pi.yml up -d
 ```
 
+## Authentication (Optional)
+
+CherryPi includes a built-in authentication service with:
+- Scoped JWT tokens with Role-Based Access Control (RBAC)
+- Magic QR code login for easy mobile onboarding
+- Encrypted user database
+- Physical-console-only admin provisioning (for security)
+
+### Running WITH Authentication (Default)
+
+1. Set up your `.env` file with required keys:
+   ```bash
+   cp .env.example .env
+   # Edit .env and set AUTH_DB_KEY and JWT_SECRET_KEY
+   ```
+
+2. Start all services:
+   ```bash
+   docker compose up -d
+   ```
+
+3. Create your first admin user from a physical console (keyboard + monitor on Pi):
+   ```bash
+   export AUTH_DB_KEY='your-key-from-env'
+   export AUTH_DATA_DIR='/var/lib/docker/volumes/cherrypi_auth_data/_data'
+   sudo -E python3 src/auth_service/secure_user_add.py
+   ```
+
+See [src/auth_service/README.md](src/auth_service/README.md) for full setup instructions.
+
+### Running WITHOUT Authentication
+
+If you want to run CherryPi without the built-in auth (e.g., for local-only use or to use your own auth):
+
+**Option 1: Environment Variable (Easiest)**
+
+Add to your `.env` file:
+```bash
+AUTH_ENABLED=false
+```
+
+Then start normally:
+```bash
+docker compose up -d
+```
+
+The frontend will auto-login as anonymous admin and hide the logout button.
+
+**Option 2: Start Only Core Services**
+
+Start without the auth-service container:
+```bash
+docker compose up -d redis backend frontend rf-controller
+```
+
+**Note:** Without auth, all API endpoints are accessible without a token.
+
 ### Docker Commands
 ```bash
 # View logs (all services)
