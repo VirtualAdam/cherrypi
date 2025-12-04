@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './App.css';
 
-function Login({ onLogin }) {
+function Login({ onLogin, theme, onThemeToggle }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,6 +19,20 @@ function Login({ onLogin }) {
 
   return (
     <div className="login-container">
+      <div className="theme-toggle">
+        <button 
+          className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
+          onClick={() => onThemeToggle('light')}
+        >
+          ☀️ Light
+        </button>
+        <button 
+          className={`theme-btn ${theme === 'dark' ? 'active' : ''}`}
+          onClick={() => onThemeToggle('dark')}
+        >
+          🌙 Dark
+        </button>
+      </div>
       <form className="login-form" onSubmit={handleSubmit}>
         <h2>Login</h2>
         {error && <div className="error-message">{error}</div>}

@@ -5,9 +5,8 @@ function EditSwitches({ onBack }) {
   const [switches, setSwitches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [newSwitch, setNewSwitch] = useState(null); // For adding new switch
-  const [scanningState, setScanningState] = useState({}); // Track which cell is scanning
-  const [editingName, setEditingName] = useState({}); // Track name edits
+  const [newSwitch, setNewSwitch] = useState(null);
+  const [scanningState, setScanningState] = useState({});
 
   useEffect(() => {
     fetchSwitches();
@@ -28,8 +27,8 @@ function EditSwitches({ onBack }) {
     }
   };
 
-  const handleScan = async (switchId, codeType) => {
-    const scanKey = `${switchId}-${codeType}`;
+  const handleScan = async (codeType) => {
+    const scanKey = `new-${codeType}`;
     setScanningState(prev => ({ ...prev, [scanKey]: 'listening' }));
 
     try {
@@ -42,51 +41,24 @@ function EditSwitches({ onBack }) {
       const result = await response.json();
 
       if (result.event === 'captured' && result.code) {
-        // Update the code
-        if (switchId === 'new') {
-          setNewSwitch(prev => ({
-            ...prev,
-            [codeType === 'on' ? 'on_code' : 'off_code']: result.code
-          }));
-        } else {
-          // Update existing switch
-          const sw = switches.find(s => s.id === switchId);
-          const updateData = {
-            name: sw.name,
-            on_code: codeType === 'on' ? result.code : sw.on_code,
-            off_code: codeType === 'off' ? result.code : sw.off_code,
-          };
-          
-          await fetch(`/api/switches/${switchId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updateData),
-          });
-          
-          fetchSwitches();
-        }
-        setScanningState(prev => ({ ...prev, [scanKey]: 'success' }));
-        setTimeout(() => setScanningState(prev => ({ ...prev, [scanKey]: null })), 2000);
+        setNewSwitch(prev => ({
+          ...prev,
+          [codeType === 'on' ? 'on_code' : 'off_code']: result.code
+        }));
+        setScanningState(prev => ({ ...prev, [scanKey]: null }));
       } else {
-        // Error or no code
         const errorMsg = result.error || result.message || 'No code captured';
-        setScanningState(prev => ({ ...prev, [scanKey]: 'error' }));
-        setTimeout(() => {
-          setScanningState(prev => ({ ...prev, [scanKey]: null }));
-          alert(`Scan failed: ${errorMsg}`);
-        }, 500);
+        setScanningState(prev => ({ ...prev, [scanKey]: null }));
+        alert(`Scan failed: ${errorMsg}`);
       }
     } catch (err) {
-      setScanningState(prev => ({ ...prev, [scanKey]: 'error' }));
-      setTimeout(() => {
-        setScanningState(prev => ({ ...prev, [scanKey]: null }));
-        alert(`Scan error: ${err.message}`);
-      }, 500);
+      setScanningState(prev => ({ ...prev, [scanKey]: null }));
+      alert(`Scan error: ${err.message}`);
     }
   };
 
-  const handleDelete = async (switchId) => {
-    if (!window.confirm('Delete this switch?')) return;
+  const handleDelete = async (switchId, switchName) => {
+    if (!window.confirm(`Delete "${switchName}"?`)) return;
     
     try {
       await fetch(`/api/switches/${switchId}`, { method: 'DELETE' });
@@ -97,10 +69,14 @@ function EditSwitches({ onBack }) {
   };
 
   const handleAddSwitch = () => {
-    setNewSwitch({ name: 'New Switch', on_code: null, off_code: null });
+    setNewSwitch({ name: '', on_code: null, off_code: null });
   };
 
   const handleSaveNewSwitch = async () => {
+    if (!newSwitch.name.trim()) {
+      alert('Please enter a name for the switch.');
+      return;
+    }
     if (!newSwitch.on_code || !newSwitch.off_code) {
       alert('Please scan both ON and OFF codes before saving.');
       return;
@@ -126,172 +102,101 @@ function EditSwitches({ onBack }) {
     setNewSwitch(null);
   };
 
-  const handleNameChange = async (switchId, newName) => {
-    if (switchId === 'new') {
-      setNewSwitch(prev => ({ ...prev, name: newName }));
-      return;
-    }
-
-    const sw = switches.find(s => s.id === switchId);
-    try {
-      await fetch(`/api/switches/${switchId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newName,
-          on_code: sw.on_code,
-          off_code: sw.off_code,
-        }),
-      });
-      fetchSwitches();
-    } catch (err) {
-      alert(`Error: ${err.message}`);
-    }
-  };
-
-  const startEditingName = (switchId, currentName) => {
-    setEditingName(prev => ({ ...prev, [switchId]: currentName }));
-  };
-
-  const finishEditingName = (switchId) => {
-    if (editingName[switchId] !== undefined) {
-      handleNameChange(switchId, editingName[switchId]);
-      setEditingName(prev => {
-        const next = { ...prev };
-        delete next[switchId];
-        return next;
-      });
-    }
-  };
-
-  const renderCodeCell = (switchId, codeType, code) => {
-    const scanKey = `${switchId}-${codeType}`;
-    const state = scanningState[scanKey];
-
-    if (state === 'listening') {
-      return <span className="code-listening">📡 Listening...</span>;
-    }
-    if (state === 'success') {
-      return <span className="code-success">✅ {code}</span>;
-    }
-    if (state === 'error') {
-      return <span className="code-error">❌ Failed</span>;
-    }
-
-    return (
-      <div className="code-cell">
-        {code ? (
-          <span className="code-value">{code}</span>
-        ) : (
-          <span className="code-empty">—</span>
-        )}
-        <button 
-          className="btn-scan" 
-          onClick={() => handleScan(switchId, codeType)}
-          title={`Scan ${codeType.toUpperCase()} code`}
-        >
-          📡
-        </button>
-      </div>
-    );
-  };
-
   if (loading) {
     return (
-      <div className="edit-switches-container">
+      <div className="edit-container">
         <div className="edit-header">
           <button className="btn btn-back" onClick={onBack}>← Back</button>
           <h2>Edit Switches</h2>
         </div>
-        <p className="loading">Loading...</p>
+        <p className="loading-text">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="edit-switches-container">
+    <div className="edit-container">
       <div className="edit-header">
         <button className="btn btn-back" onClick={onBack}>← Back</button>
         <h2>Edit Switches</h2>
       </div>
 
-      {error && <p className="error">Error: {error}</p>}
+      {error && <p className="error-text">Error: {error}</p>}
 
-      <div className="switches-table">
-        <div className="table-header">
-          <span>Name</span>
-          <span>ON Code</span>
-          <span>OFF Code</span>
-          <span></span>
+      <div className="edit-table">
+        <div className="table-header-row">
+          <span className="col-name">Name</span>
+          <span className="col-code">ON Code</span>
+          <span className="col-code">OFF Code</span>
+          <span className="col-action"></span>
         </div>
 
         {switches.map((sw) => (
           <div key={sw.id} className="table-row">
-            <div className="name-cell">
-              {editingName[sw.id] !== undefined ? (
-                <input
-                  type="text"
-                  className="name-input"
-                  value={editingName[sw.id]}
-                  onChange={(e) => setEditingName(prev => ({ ...prev, [sw.id]: e.target.value }))}
-                  onBlur={() => finishEditingName(sw.id)}
-                  onKeyDown={(e) => e.key === 'Enter' && finishEditingName(sw.id)}
-                  autoFocus
-                />
-              ) : (
-                <span 
-                  className="name-value" 
-                  onClick={() => startEditingName(sw.id, sw.name)}
-                  title="Click to edit"
-                >
-                  {sw.name}
-                </span>
-              )}
-            </div>
-            {renderCodeCell(sw.id, 'on', sw.on_code)}
-            {renderCodeCell(sw.id, 'off', sw.off_code)}
-            <div className="delete-cell">
+            <span className="col-name">{sw.name}</span>
+            <span className="col-code code-value">{sw.on_code}</span>
+            <span className="col-code code-value">{sw.off_code}</span>
+            <span className="col-action">
               <button 
-                className="btn-delete-icon" 
-                onClick={() => handleDelete(sw.id)}
-                title="Delete switch"
+                className="btn btn-delete"
+                onClick={() => handleDelete(sw.id, sw.name)}
               >
-                🗑️
+                Delete
               </button>
-            </div>
+            </span>
           </div>
         ))}
 
         {/* New Switch Row */}
         {newSwitch && (
           <div className="table-row new-row">
-            <div className="name-cell">
+            <span className="col-name">
               <input
                 type="text"
-                className="name-input"
+                className="input-name"
                 value={newSwitch.name}
                 onChange={(e) => setNewSwitch(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Switch name"
                 autoFocus
               />
-            </div>
-            {renderCodeCell('new', 'on', newSwitch.on_code)}
-            {renderCodeCell('new', 'off', newSwitch.off_code)}
-            <div className="new-row-actions">
-              <button className="btn-save-new" onClick={handleSaveNewSwitch}>Save</button>
-              <button className="btn-cancel-new" onClick={handleCancelNewSwitch}>✕</button>
-            </div>
+            </span>
+            <span className="col-code">
+              {scanningState['new-on'] === 'listening' ? (
+                <span className="scanning">Listening...</span>
+              ) : newSwitch.on_code ? (
+                <span className="code-value">{newSwitch.on_code}</span>
+              ) : (
+                <button className="btn btn-scan" onClick={() => handleScan('on')}>
+                  Scan ON
+                </button>
+              )}
+            </span>
+            <span className="col-code">
+              {scanningState['new-off'] === 'listening' ? (
+                <span className="scanning">Listening...</span>
+              ) : newSwitch.off_code ? (
+                <span className="code-value">{newSwitch.off_code}</span>
+              ) : (
+                <button className="btn btn-scan" onClick={() => handleScan('off')}>
+                  Scan OFF
+                </button>
+              )}
+            </span>
+            <span className="col-action new-actions">
+              <button className="btn btn-save" onClick={handleSaveNewSwitch}>Save</button>
+              <button className="btn btn-cancel" onClick={handleCancelNewSwitch}>Cancel</button>
+            </span>
           </div>
         )}
 
         {switches.length === 0 && !newSwitch && (
-          <p className="no-switches">No switches yet. Click "Add Switch" to get started!</p>
+          <p className="empty-message">No switches configured yet.</p>
         )}
       </div>
 
       {!newSwitch && (
         <div className="add-section">
-          <button className="btn-add" onClick={handleAddSwitch}>
+          <button className="btn btn-add" onClick={handleAddSwitch}>
             + Add Switch
           </button>
         </div>

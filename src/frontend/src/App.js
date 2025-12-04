@@ -8,6 +8,15 @@ function App() {
   const [currentPage, setCurrentPage] = useState('control');
   const [switches, setSwitches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('cherrypi-theme') || 'dark';
+  });
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('cherrypi-theme', theme);
+  }, [theme]);
 
   // Fetch switches from API
   useEffect(() => {
@@ -25,7 +34,6 @@ function App() {
         setSwitches(data);
       } else {
         console.error('Failed to fetch switches');
-        // Fall back to empty array
         setSwitches([]);
       }
     } catch (error) {
@@ -65,8 +73,8 @@ function App() {
     return (
       <div className="App">
         <header className="App-header">
-          <h1>CherryPi Control</h1>
-          <Login onLogin={setIsLoggedIn} />
+          <h1>CherryPi</h1>
+          <Login onLogin={setIsLoggedIn} theme={theme} onThemeToggle={setTheme} />
         </header>
       </div>
     );
@@ -88,12 +96,12 @@ function App() {
     <div className="App">
       <header className="App-header">
         <div className="header-top">
-          <h1>CherryPi Control</h1>
+          <h1>CherryPi</h1>
           <div className="header-buttons">
-            <button className="btn btn-edit-switches" onClick={() => setCurrentPage('edit')}>
-              ⚙️ Edit
+            <button className="btn btn-secondary" onClick={() => setCurrentPage('edit')}>
+              Edit
             </button>
-            <button className="btn btn-logout" onClick={() => setIsLoggedIn(false)}>
+            <button className="btn btn-secondary" onClick={() => setIsLoggedIn(false)}>
               Logout
             </button>
           </div>
@@ -105,29 +113,31 @@ function App() {
           <div className="no-switches-message">
             <p>No switches configured yet.</p>
             <button 
-              className="btn btn-add-first" 
+              className="btn btn-primary" 
               onClick={() => setCurrentPage('edit')}
             >
               + Add Your First Switch
             </button>
           </div>
         ) : (
-          <div className="outlet-grid">
+          <div className="switch-grid">
             {switches.map((sw) => (
-              <div key={sw.id} className="outlet-row">
-                <span className="outlet-label">{sw.name}</span>
-                <button 
-                  className="btn btn-on" 
-                  onClick={() => handleToggle(sw.id, 'on')}
-                >
-                  ON
-                </button>
-                <button 
-                  className="btn btn-off" 
-                  onClick={() => handleToggle(sw.id, 'off')}
-                >
-                  OFF
-                </button>
+              <div key={sw.id} className="switch-card">
+                <span className="switch-name">{sw.name}</span>
+                <div className="switch-buttons">
+                  <button 
+                    className="btn btn-on" 
+                    onClick={() => handleToggle(sw.id, 'on')}
+                  >
+                    ON
+                  </button>
+                  <button 
+                    className="btn btn-off" 
+                    onClick={() => handleToggle(sw.id, 'off')}
+                  >
+                    OFF
+                  </button>
+                </div>
               </div>
             ))}
           </div>
