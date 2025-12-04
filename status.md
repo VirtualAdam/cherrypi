@@ -1,7 +1,7 @@
 # CherryPi Project Status
 
 **Last Updated:** December 3, 2025  
-**Status:** RF Decoder IMPROVED ✅ - Clear error handling added
+**Status:** 🎉 FULL TX STACK WORKING! ✅ Redis → Controller → RF Transmit
 
 ---
 
@@ -22,12 +22,12 @@ CherryPi is a home automation system for controlling 433MHz RF outlet switches v
                                     │                                         │
                               ┌─────▼─────┐                           ┌───────▼───────┐
                               │ controller │                           │ sniffer_service│
-                              │ (TX only)  │                           │  (RX - WIP)    │
+                              │  TX ✅     │                           │  RX (WIP)      │
                               └─────┬─────┘                           └───────┬───────┘
                                     │                                         │
                               ┌─────▼─────┐                           ┌───────▼───────┐
                               │  GPIO 17  │                           │    GPIO 27    │
-                              │ TX Module │                           │   RX Module   │
+                              │ TX ✅     │                           │   RX ✅       │
                               └───────────┘                           └───────────────┘
 ```
 
@@ -45,7 +45,33 @@ CherryPi is a home automation system for controlling 433MHz RF outlet switches v
 
 ---
 
-## 🎉 December 3, 2025: Clear Error Handling Added
+## 🎉 December 3, 2025: FULL TX STACK WORKING!
+
+### What Was Accomplished
+1. **RF Decoder improved** with clear error handling (`RFDecodeError`)
+2. **Captured new remote codes** - all 5 switches decoded with 78-99% confidence
+3. **Updated config.json** with Switch 1 codes (others pending GUI setup)
+4. **Fixed docker-compose.yml** - rf-controller now starts with GPIO access
+5. **TESTED END-TO-END**: Redis pub → Controller → RF Transmit → Switch toggles! ✅
+
+### Verified Working Flow
+```
+docker compose exec rf-controller python3 test_redis_tx.py 1 on   ✅ Switch turns ON
+docker compose exec rf-controller python3 test_redis_tx.py 1 off  ✅ Switch turns OFF
+```
+
+### Switch 1 Codes (Verified Working)
+| Action | Code | Pulse Length |
+|--------|------|--------------|
+| ON | 4543795 | 184µs |
+| OFF | 4543804 | 184µs |
+
+### Next Step: GUI Control
+Test controlling Switch 1 from the React web UI at http://192.168.0.199:3000
+
+---
+
+## 🎉 December 3, 2025 (Earlier): Clear Error Handling Added
 
 ### What Was Done
 Improved `custom_rf_decoder.py` to give **clear pass/fail results** instead of ambiguous `None` returns.
