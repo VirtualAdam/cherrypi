@@ -20,6 +20,12 @@
   
   --btn-text: #ffffff;
   
+  --btn-on-bg: #3b82f6; /* Blue 500 */
+  --btn-on-hover: #2563eb;
+  
+  --btn-off-bg: #64748b; /* Slate 500 */
+  --btn-off-hover: #475569;
+  
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
@@ -42,6 +48,12 @@
   
   --accent-danger: #ef4444;
   --accent-danger-hover: #dc2626;
+  
+  --btn-on-bg: #3b82f6;
+  --btn-on-hover: #2563eb;
+  
+  --btn-off-bg: #64748b;
+  --btn-off-hover: #475569;
   
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
@@ -84,9 +96,7 @@ h1 {
   font-weight: 700;
   margin: 0 0 40px 0;
   letter-spacing: -1px;
-  background: linear-gradient(135deg, var(--accent-primary), #3b82f6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
 }
 
 /* Button Base */
@@ -139,23 +149,23 @@ h1 {
 }
 
 .btn-on {
-  background-color: var(--accent-primary);
+  background-color: var(--btn-on-bg);
   color: #fff;
   min-width: 80px;
 }
 
 .btn-on:hover {
-  background-color: var(--accent-primary-hover);
+  background-color: var(--btn-on-hover);
 }
 
 .btn-off {
-  background-color: var(--accent-danger);
+  background-color: var(--btn-off-bg);
   color: #fff;
   min-width: 80px;
 }
 
 .btn-off:hover {
-  background-color: var(--accent-danger-hover);
+  background-color: var(--btn-off-hover);
 }
 
 /* Theme Toggle */

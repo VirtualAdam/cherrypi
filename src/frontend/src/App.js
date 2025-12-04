@@ -73,7 +73,7 @@ function App() {
     return (
       <div className="App">
         <header className="App-header">
-          <h1>CherryPi</h1>
+          <h1>Outlet Control</h1>
           <Login onLogin={setIsLoggedIn} theme={theme} onThemeToggle={setTheme} />
         </header>
       </div>
@@ -96,7 +96,7 @@ function App() {
     <div className="App">
       <header className="App-header">
         <div className="header-top">
-          <h1>CherryPi</h1>
+          <h1>Outlet Control</h1>
           <div className="header-buttons">
             <button className="btn btn-secondary" onClick={() => setCurrentPage('edit')}>
               Edit
