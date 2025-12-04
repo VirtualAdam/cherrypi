@@ -160,6 +160,19 @@
   background-color: rgba(97, 218, 251, 0.1);
 }
 
+.btn-edit-switches {
+  background-color: transparent;
+  border: 1px solid #61dafb;
+  color: #61dafb;
+  font-size: 0.8rem;
+  padding: 5px 15px;
+  width: auto;
+}
+
+.btn-edit-switches:hover {
+  background-color: rgba(97, 218, 251, 0.1);
+}
+
 .loading-message {
   color: #aaa;
   font-size: 1rem;

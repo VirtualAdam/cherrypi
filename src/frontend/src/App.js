@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Login from './Login';
-import Utilities from './Utilities';
+import EditSwitches from './EditSwitches';
 import './App.css';
 
 function App() {
@@ -72,12 +72,12 @@ function App() {
     );
   }
 
-  // Show Utilities page
-  if (currentPage === 'utilities') {
+  // Show Edit Switches page
+  if (currentPage === 'edit') {
     return (
       <div className="App">
         <header className="App-header">
-          <Utilities onBack={() => setCurrentPage('control')} />
+          <EditSwitches onBack={() => { setCurrentPage('control'); fetchSwitches(); }} />
         </header>
       </div>
     );
@@ -90,8 +90,8 @@ function App() {
         <div className="header-top">
           <h1>CherryPi Control</h1>
           <div className="header-buttons">
-            <button className="btn btn-utilities" onClick={() => setCurrentPage('utilities')}>
-              ⚙️ Utilities
+            <button className="btn btn-edit-switches" onClick={() => setCurrentPage('edit')}>
+              ⚙️ Edit
             </button>
             <button className="btn btn-logout" onClick={() => setIsLoggedIn(false)}>
               Logout
@@ -106,7 +106,7 @@ function App() {
             <p>No switches configured yet.</p>
             <button 
               className="btn btn-add-first" 
-              onClick={() => setCurrentPage('utilities')}
+              onClick={() => setCurrentPage('edit')}
             >
               + Add Your First Switch
             </button>
