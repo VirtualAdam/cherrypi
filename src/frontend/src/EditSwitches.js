@@ -114,7 +114,6 @@ function EditSwitches({ onBack, authFetch }) {
     return (
       <div className="edit-container">
         <div className="edit-header">
-          <button className="btn btn-back" onClick={onBack}>← Back</button>
           <h2>Edit Switches</h2>
         </div>
         <p className="loading-text">Loading...</p>
@@ -125,7 +124,6 @@ function EditSwitches({ onBack, authFetch }) {
   return (
     <div className="edit-container">
       <div className="edit-header">
-        <button className="btn btn-back" onClick={onBack}>← Back</button>
         <h2>Edit Switches</h2>
       </div>
 
@@ -142,14 +140,18 @@ function EditSwitches({ onBack, authFetch }) {
         {switches.map((sw) => (
           <div key={sw.id} className="table-row">
             <span className="col-name">{sw.name}</span>
-            <span className="col-code code-value">{sw.on_code}</span>
-            <span className="col-code code-value">{sw.off_code}</span>
+            <span className="col-code" data-label="ON Code:">
+              <span className="code-value">{sw.on_code}</span>
+            </span>
+            <span className="col-code" data-label="OFF Code:">
+              <span className="code-value">{sw.off_code}</span>
+            </span>
             <span className="col-action">
               <button 
                 className="btn btn-delete"
                 onClick={() => handleDelete(sw.id, sw.name)}
               >
-                Delete
+                🗑️ Delete
               </button>
             </span>
           </div>
@@ -158,47 +160,56 @@ function EditSwitches({ onBack, authFetch }) {
         {/* New Switch Row */}
         {newSwitch && (
           <div className="table-row new-row">
-            <span className="col-name">
-              <input
-                type="text"
-                className="input-name"
-                value={newSwitch.name}
-                onChange={(e) => setNewSwitch(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Switch name"
-                autoFocus
-              />
-            </span>
-            <span className="col-code">
-              {scanningState['new-on'] === 'listening' ? (
-                <span className="scanning">Listening...</span>
-              ) : newSwitch.on_code ? (
-                <span className="code-value">{newSwitch.on_code}</span>
-              ) : (
-                <button className="btn btn-scan" onClick={() => handleScan('on')}>
-                  Scan ON
+            <div className="new-switch-form">
+              <div className="form-row">
+                <label>Switch Name</label>
+                <input
+                  type="text"
+                  className="input-name"
+                  value={newSwitch.name}
+                  onChange={(e) => setNewSwitch(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., Living Room Light"
+                  autoFocus
+                />
+              </div>
+              <div className="form-row">
+                <label>ON Code</label>
+                {scanningState['new-on'] === 'listening' ? (
+                  <span className="scanning">📡 Listening for signal...</span>
+                ) : newSwitch.on_code ? (
+                  <span className="code-value">{newSwitch.on_code}</span>
+                ) : (
+                  <button className="btn btn-scan" onClick={() => handleScan('on')}>
+                    📡 Scan ON Code
+                  </button>
+                )}
+              </div>
+              <div className="form-row">
+                <label>OFF Code</label>
+                {scanningState['new-off'] === 'listening' ? (
+                  <span className="scanning">📡 Listening for signal...</span>
+                ) : newSwitch.off_code ? (
+                  <span className="code-value">{newSwitch.off_code}</span>
+                ) : (
+                  <button className="btn btn-scan" onClick={() => handleScan('off')}>
+                    📡 Scan OFF Code
+                  </button>
+                )}
+              </div>
+              <div className="new-actions">
+                <button className="btn btn-save" onClick={handleSaveNewSwitch}>
+                  ✓ Save Switch
                 </button>
-              )}
-            </span>
-            <span className="col-code">
-              {scanningState['new-off'] === 'listening' ? (
-                <span className="scanning">Listening...</span>
-              ) : newSwitch.off_code ? (
-                <span className="code-value">{newSwitch.off_code}</span>
-              ) : (
-                <button className="btn btn-scan" onClick={() => handleScan('off')}>
-                  Scan OFF
+                <button className="btn btn-cancel" onClick={handleCancelNewSwitch}>
+                  ✕ Cancel
                 </button>
-              )}
-            </span>
-            <span className="col-action new-actions">
-              <button className="btn btn-save" onClick={handleSaveNewSwitch}>Save</button>
-              <button className="btn btn-cancel" onClick={handleCancelNewSwitch}>Cancel</button>
-            </span>
+              </div>
+            </div>
           </div>
         )}
 
         {switches.length === 0 && !newSwitch && (
-          <p className="empty-message">No switches configured yet.</p>
+          <p className="empty-message">No switches configured yet. Add your first switch!</p>
         )}
       </div>
 

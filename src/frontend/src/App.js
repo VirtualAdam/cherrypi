@@ -173,7 +173,9 @@ function App() {
     return (
       <div className="App">
         <header className="App-header">
-          <h1>Outlet Control</h1>
+          <div className="login-header">
+            <h1>🍒 CherryPi</h1>
+          </div>
           <Login onLogin={handleLogin} theme={theme} onThemeToggle={setTheme} />
         </header>
       </div>
@@ -184,12 +186,51 @@ function App() {
   if (currentPage === 'edit') {
     return (
       <div className="App">
-        <header className="App-header">
+        {/* Top Navigation Bar */}
+        <nav className="top-bar">
+          <div className="top-bar-content">
+            <h1>🍒 CherryPi</h1>
+            
+            <div className="top-tabs">
+              <button 
+                className={`tab-btn ${currentPage === 'control' ? 'active' : ''}`}
+                onClick={() => { setCurrentPage('control'); fetchSwitches(); }}
+              >
+                <span className="tab-icon">🎮</span>
+                <span className="tab-label">Control</span>
+              </button>
+              {canEditSwitches && (
+                <button 
+                  className={`tab-btn ${currentPage === 'edit' ? 'active' : ''}`}
+                  onClick={() => setCurrentPage('edit')}
+                >
+                  <span className="tab-icon">⚙️</span>
+                  <span className="tab-label">Edit</span>
+                </button>
+              )}
+            </div>
+            
+            <div className="top-bar-right">
+              <div className="user-info-compact">
+                <span className="username-compact">{user?.username}</span>
+                <span className={`role-badge role-${user?.role}`}>{user?.role}</span>
+              </div>
+              {authEnabled && (
+                <button className="btn btn-secondary btn-logout" onClick={handleLogout}>
+                  <span className="tab-icon">🚪</span>
+                  <span className="logout-text">Logout</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </nav>
+        
+        <main className="main-content">
           <EditSwitches 
             onBack={() => { setCurrentPage('control'); fetchSwitches(); }}
             authFetch={authFetch}
           />
-        </header>
+        </main>
       </div>
     );
   }
@@ -197,38 +238,59 @@ function App() {
   // Main Control page
   return (
     <div className="App">
-      <header className="App-header">
-        <div className="header-top">
-          <h1>Outlet Control</h1>
-          <div className="user-info">
-            <span className="username">{user?.username}</span>
-            <span className={`role-badge role-${user?.role}`}>{user?.role}</span>
-          </div>
-          <div className="header-buttons">
+      {/* Top Navigation Bar */}
+      <nav className="top-bar">
+        <div className="top-bar-content">
+          <h1>🍒 CherryPi</h1>
+          
+          <div className="top-tabs">
+            <button 
+              className={`tab-btn ${currentPage === 'control' ? 'active' : ''}`}
+              onClick={() => setCurrentPage('control')}
+            >
+              <span className="tab-icon">🎮</span>
+              <span className="tab-label">Control</span>
+            </button>
             {canEditSwitches && (
-              <button className="btn btn-secondary" onClick={() => setCurrentPage('edit')}>
-                Edit
+              <button 
+                className={`tab-btn ${currentPage === 'edit' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('edit')}
+              >
+                <span className="tab-icon">⚙️</span>
+                <span className="tab-label">Edit</span>
               </button>
             )}
+          </div>
+          
+          <div className="top-bar-right">
+            <div className="user-info-compact">
+              <span className="username-compact">{user?.username}</span>
+              <span className={`role-badge role-${user?.role}`}>{user?.role}</span>
+            </div>
             {authEnabled && (
-              <button className="btn btn-secondary" onClick={handleLogout}>
-                Logout
+              <button className="btn btn-secondary btn-logout" onClick={handleLogout}>
+                <span className="tab-icon">🚪</span>
+                <span className="logout-text">Logout</span>
               </button>
             )}
           </div>
         </div>
-        
+      </nav>
+      
+      <main className="main-content">
         {loading ? (
           <p className="loading-message">Loading switches...</p>
         ) : switches.length === 0 ? (
           <div className="no-switches-message">
             <p>No switches configured yet.</p>
-            <button 
-              className="btn btn-primary" 
-              onClick={() => setCurrentPage('edit')}
-            >
-              + Add Your First Switch
-            </button>
+            {canEditSwitches && (
+              <button 
+                className="btn btn-primary" 
+                onClick={() => setCurrentPage('edit')}
+              >
+                + Add Your First Switch
+              </button>
+            )}
           </div>
         ) : (
           <div className="switch-grid">
@@ -253,7 +315,7 @@ function App() {
             ))}
           </div>
         )}
-      </header>
+      </main>
     </div>
   );
 }
