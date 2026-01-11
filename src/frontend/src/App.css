@@ -541,6 +541,34 @@ h1 {
   margin: 0 auto;
 }
 
+.foundation-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #7d9a78 0%, #5c7a58 100%);
+  color: #fffefa;
+  text-decoration: none;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow);
+  width: 100%;
+}
+
+.foundation-link:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  background: linear-gradient(135deg, #8aab85 0%, #6a8a62 100%);
+}
+
+.foundation-icon {
+  font-size: 1.2rem;
+}
+
 .login-form {
   background: var(--bg-card);
   padding: 24px;

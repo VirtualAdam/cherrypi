@@ -125,6 +125,14 @@ function Login({ onLogin, theme, onThemeToggle }) {
         </button>
       </div>
 
+      <a 
+        href="/foundation"
+        className="foundation-link"
+      >
+        <span className="foundation-icon">🏠</span>
+        <span>Wiedemann Family Foundation</span>
+      </a>
+
       {loginMode === 'password' ? (
         <form className="login-form" onSubmit={handlePasswordLogin}>
           <h2>Login</h2>

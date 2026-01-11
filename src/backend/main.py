@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import Optional
 import redis
@@ -459,6 +460,17 @@ async def get_sniffer_status():
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+
+@app.get("/foundation")
+async def foundation_redirect(request: Request):
+    """
+    Redirect to the Family Foundation static site on port 8080.
+    This allows accessing the foundation site via /foundation without logging in.
+    """
+    # Get the host from the request and redirect to port 8080
+    host = request.headers.get("host", "localhost").split(":")[0]
+    return RedirectResponse(url=f"http://{host}:8080", status_code=302)
 
 
 # --- Auth Endpoints ---
