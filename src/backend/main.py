@@ -468,8 +468,10 @@ async def foundation_redirect(request: Request):
     Redirect to the Family Foundation static site on port 8080.
     This allows accessing the foundation site via /foundation without logging in.
     """
-    # Get the host from the request and redirect to port 8080
-    host = request.headers.get("host", "localhost").split(":")[0]
+    # Get the original host from X-Forwarded-Host (set by proxy) or fall back to Host header
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "localhost")
+    # Remove port if present
+    host = host.split(":")[0]
     return RedirectResponse(url=f"http://{host}:8080", status_code=302)
 
 

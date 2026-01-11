@@ -6,7 +6,8 @@ module.exports = function(app) {
     '/foundation',
     createProxyMiddleware({
       target: 'http://backend:8000',
-      changeOrigin: true,
+      changeOrigin: false,  // Keep original host header
+      xfwd: true,           // Add X-Forwarded-* headers
     })
   );
 
