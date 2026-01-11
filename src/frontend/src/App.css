@@ -330,6 +330,16 @@ h1 {
   box-shadow: var(--shadow-sm);
 }
 
+.tab-btn.tab-link {
+  text-decoration: none;
+  color: var(--text-secondary);
+}
+
+.tab-btn.tab-link:hover {
+  color: #c9a85c; /* Gold accent for the foundation link */
+  background-color: var(--bg-secondary);
+}
+
 .tab-btn .tab-icon {
   font-size: 1.1rem;
 }

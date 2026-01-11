@@ -208,6 +208,15 @@ function App() {
                   <span className="tab-label">Edit</span>
                 </button>
               )}
+              <a 
+                href={`${window.location.protocol}//${window.location.hostname}:8080`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tab-btn tab-link"
+              >
+                <span className="tab-icon">🏠</span>
+                <span className="tab-label">Foundation</span>
+              </a>
             </div>
             
             <div className="top-bar-right">
@@ -260,6 +269,15 @@ function App() {
                 <span className="tab-label">Edit</span>
               </button>
             )}
+            <a 
+              href={`${window.location.protocol}//${window.location.hostname}:8080`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tab-btn tab-link"
+            >
+              <span className="tab-icon">🏠</span>
+              <span className="tab-label">Foundation</span>
+            </a>
           </div>
           
           <div className="top-bar-right">

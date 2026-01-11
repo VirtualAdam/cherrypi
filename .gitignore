@@ -26,6 +26,11 @@ codes.md
 magic_qr.html
 magic_qr.png
 
+# Static site private content (keep infrastructure, ignore personal HTML)
+src/static-site/index.html
+src/static-site/*.html
+!src/static-site/index.example.html
+
 # Node modules
 node_modules/
 

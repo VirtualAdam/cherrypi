@@ -58,6 +58,12 @@ services:
     volumes:
       - ./src/RFController/config.json:/app/config.json
 
+  family-foundation:
+    build: ./src/static-site
+    ports:
+      - "8080:80"
+    restart: always
+
 volumes:
   redis_data:
   auth_data:
